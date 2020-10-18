@@ -1,8 +1,0 @@
-prefix=/home/fire/catkin_ws/devel
-
-Name: gotopos
-Description: Description of gotopos
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
