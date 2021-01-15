@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="gotopos" type="execute_move.py" name="execute_move" output="screen">
+  </node>
+</launch>
