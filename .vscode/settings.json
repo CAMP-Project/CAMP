@@ -1,5 +1,6 @@
 {
     "cmake.sourceDirectory": "${workspaceFolder}/src",
     "python.pythonPath": "/usr/bin/python",
-    "python.linting.pylintPath": "${env:HOME}/.local/bin/pylint"
+    "python.linting.pylintPath": "${env:HOME}/.local/bin/pylint",
+    "cmake.configureOnOpen": false
 }
