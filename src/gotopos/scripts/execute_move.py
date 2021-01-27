@@ -1,23 +1,12 @@
+
 #!/usr/bin/env python
 
 # Author: Alex Marlow
 
 # Editor: David Babin
 
-import rospy
-import numpy
-
-####################################################
-from localizer_dwm1001.msg import Tag
-####################################################
-
-from geometry_msgs.msg import Twist, Vector3, Pose
-from std_msgs.msg import String
-#!/usr/bin/env python
-
-# Author: Alex Marlow
-
-# Editor: David Babin
+import roslib
+roslib.load_manifest('rospy')
 
 import rospy
 import numpy
