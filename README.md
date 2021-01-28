@@ -15,3 +15,15 @@ cd CAMP
 
 catkin_make
 ```
+
+## LIDAR Data Structure
+Variable Name| Data
+-------------|-------
+angle_min | Start angle of the scan [rad]
+angle_max | End angle of the scan [rad]
+angle_increment | angular distance between measurements [rad]
+scan_time | Time between [seconds]
+range_min | minimum range value [m]
+range_max | maximum range value [m]
+ranges | range data array [m]
+intensities | intensity data array [device-specific units]
