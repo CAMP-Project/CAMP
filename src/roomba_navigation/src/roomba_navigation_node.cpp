@@ -6,6 +6,14 @@
 #include <vector>
 using namespace std;
 
+//constants from teleop_key
+//const int BURGER_MAX_LIN_VEL = 0.22;
+//const int BURGER_MAX_ANG_VEL = 2.84;
+
+// somewhat safer constants because i am scared
+const int BURGER_MAX_LIN_VEL = 0.1;
+const int BURGER_MAX_ANG_VEL = 2.00;
+
 // Declare Scan variables globaly
 float angle_min, angle_max, angle_increment, scan_time, range_min, range_max;
 vector<float> ranges, intensities;
@@ -35,7 +43,8 @@ int main(int argc, char **argv){
 
     // Declare variables for vel_cmd message
     float x_vel = 0, z_ang_vel = 0;
-    bool safe;
+    float closest_front_object;
+    int time = 0;
 
 	// Set the loop period. '10' refers to 10 Hz and the main loop repeats at 0.1 second intervals
 	ros::Rate loop_rate(10);
@@ -44,21 +53,29 @@ int main(int argc, char **argv){
 	ros::Subscriber scan_subscriber = nh.subscribe("scan", 10, msgCallback);
 	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     	
-	while(ros::ok()) {
-		// Check the cone of points for the front 55 degrees for hits within 0.3m
-        safe = true;
-        for(int i = 360-27; i < 360+27; i++) 
-            if(ranges.at(i%360) < 0.3) safe = false;
+	while(ros::ok() && time < 10*60*1) {
+		// Check the cone of points for the front 55 degrees for hits, save closest hit.
+        if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
+        else closest_front_object = 500;
+        for(int i = 1; i < 27; i++) {
+            if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
+            if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
+        }
 
-        if(safe) x_vel = 0.1;
+        if (closest_front_object < 0.3) x_vel = 0;
+        else if (closest_front_object < 0.5) x_vel = 0.05;
+        else x_vel = 0.1;
+
+        if (closest_front_object < 0.3) z_ang_vel = 0.5;
+        else z_ang_vel = 0;
 
         // Write to the vel_msg we plan to publish
-		vel_msg.linear.x = vel;
+		vel_msg.linear.x = x_vel;
 		vel_msg.linear.y = 0;
 		vel_msg.linear.z = 0;
 		vel_msg.angular.x = 0;
 		vel_msg.angular.y = 0;
-		vel_msg.angular.z = spin;
+		vel_msg.angular.z = z_ang_vel;
 		
         //publish vel_msg
 		cmd_publisher.publish(vel_msg);
@@ -66,5 +83,7 @@ int main(int argc, char **argv){
 		loop_rate.sleep();
         // Check for new messages from subscribed nodes
 		ros::spinOnce();
+        time++;
 	}
 	return 0;
+}
