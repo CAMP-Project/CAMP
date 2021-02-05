@@ -53,21 +53,28 @@ int main(int argc, char **argv){
 	ros::Subscriber scan_subscriber = nh.subscribe("scan", 10, msgCallback);
 	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     	
-	while(ros::ok() && time < 10*60*1) {
+	while(ros::ok()) {
 		// Check the cone of points for the front 55 degrees for hits, save closest hit.
-        if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
-        else closest_front_object = 500;
-        for(int i = 1; i < 27; i++) {
-            if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
-            if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
+        if(ranges.size() == 360){
+            if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
+            else closest_front_object = 500;
+            for(int i = 1; i < 27; i++) {
+                if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
+                if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
+            }
         }
-
         if (closest_front_object < 0.3) x_vel = 0;
         else if (closest_front_object < 0.5) x_vel = 0.05;
         else x_vel = 0.1;
 
-        if (closest_front_object < 0.3) z_ang_vel = 0.5;
+        if (closest_front_object < 0.5) z_ang_vel = 0.5;
         else z_ang_vel = 0;
+
+        //Timed kill switch just in case the bot goes rogue. Lasts for 2 minutes.
+        if (time > 10*60*2) {
+            z_ang_vel = 0;
+            x_vel = 0;
+        }
 
         // Write to the vel_msg we plan to publish
 		vel_msg.linear.x = x_vel;
