@@ -1,3 +1,8 @@
+/********************************************
+ * The functionality in this package is		*
+ * moving to the roomba_navigation package	*
+ * for further development.					*
+ ********************************************/
 // ROS Default Header File
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
