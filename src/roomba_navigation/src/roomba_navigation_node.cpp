@@ -44,7 +44,7 @@ int main(int argc, char **argv){
     // Declare variables for vel_cmd message
     float x_vel = 0, z_ang_vel = 0;
     float closest_front_object;
-    int time = 0;
+    int time = 0, left, right, lr;
 
 	// Set the loop period. '10' refers to 10 Hz and the main loop repeats at 0.1 second intervals
 	ros::Rate loop_rate(10);
@@ -55,23 +55,33 @@ int main(int argc, char **argv){
     	
 	while(ros::ok()) {
 		// Check the cone of points for the front 55 degrees for hits, save closest hit.
+        left = 0;
+        right = 0;
+        lr = 1;
         if(ranges.size() == 360){
             if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
             else closest_front_object = 500;
             for(int i = 1; i < 27; i++) {
                 if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
                 if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
+                // if(ranges.at(i) < 1 && ranges.at(i) != 0) right++;
+                // if(ranges.at(360-i) < 1 && ranges.at(360-i) != 0) left++;
             }
+            for(int i = 1; i < 180; i++) {
+                if(ranges.at(i) < 1 && ranges.at(i) != 0) right++;
+                if(ranges.at(360-i) < 1 && ranges.at(360-i) != 0) left++;
+            }
+            if(left < right) lr = -1;
         }
         if (closest_front_object < 0.3) x_vel = 0;
         else if (closest_front_object < 0.5) x_vel = 0.05;
         else x_vel = 0.1;
 
-        if (closest_front_object < 0.5) z_ang_vel = 0.5;
+        if (closest_front_object < 0.5) z_ang_vel = 0.5*lr;
         else z_ang_vel = 0;
 
         //Timed kill switch just in case the bot goes rogue. Lasts for 2 minutes.
-        if (time > 10*60*2) {
+        if (time > 10*60*10) {
             z_ang_vel = 0;
             x_vel = 0;
         }
@@ -85,6 +95,7 @@ int main(int argc, char **argv){
 		vel_msg.angular.z = z_ang_vel;
 		
         //publish vel_msg
+        ROS_INFO("Vel: %f Ang: %f", x_vel, z_ang_vel);
 		cmd_publisher.publish(vel_msg);
         // Sleep according to the loop rate above
 		loop_rate.sleep();
