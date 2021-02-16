@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-
-<launch>
-
-  <node pkg="kalman_filter" type="kalman_filter.py" name="kalman_filter" output="screen">
-
-  </node>
-
-</launch>
