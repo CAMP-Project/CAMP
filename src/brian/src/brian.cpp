@@ -12,6 +12,8 @@
 #include <vector>
 #include <map>
 
+#include "brian/MapParser.h"
+
 using namespace std;
 
 float angle_min, angle_max, angle_increment, scan_time, range_min, range_max;
