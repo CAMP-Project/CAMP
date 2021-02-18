@@ -122,8 +122,12 @@ include_directories(
 
 file(GLOB_RECURSE SOURCE_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp",
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h",
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/*.cpp",
   "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
 )
+
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
