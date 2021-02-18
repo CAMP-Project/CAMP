@@ -48,7 +48,7 @@ public:
     bool dump()
     {
         _build_map();
-        return _dump_tga();
+        return _pgm_dump();
     }
 
     ~MapParser()
@@ -137,7 +137,7 @@ private:
         header[ 13 ] = (width  >> 8) & 0xFF;
         header[ 14 ] =  height       & 0xFF;
         header[ 15 ] = (height >> 8) & 0xFF;
-        header[ 16 ] = 24;  // bits per pixel
+        header[ 16 ] = 8;  // bits per pixel
         std::cout << "Writing Header" << std::endl;
         tgafile.write((const char*) header, 18);
 
@@ -150,6 +150,9 @@ private:
                 tgafile.put((char)_output_map[i][j].blue);
                 tgafile.put((char)_output_map[i][j].green);
                 tgafile.put((char)_output_map[i][j].red);
+                // tgafile.put((char)255);
+                // tgafile.put((char)0);
+                // tgafile.put((char)255);
             }
         }
         std::cout << "Writing Footer" << std::endl;
@@ -163,6 +166,25 @@ private:
 
         tgafile.close();
         return true; // SUCCESS
+    }
+
+    bool _pgm_dump()
+    {
+        std::ofstream pgmfile( "map.pgm", std::ios::binary );
+        if (!pgmfile) return false;
+
+        pgmfile << 'P' << '2' << std::endl;
+        pgmfile << width << ' ' << height << std::endl;
+
+        for (int i = 0; i < _output_map.size(); i++)
+        {
+            for (int j = 0; j < _output_map[i].size(); j++)
+            {
+                pgmfile << (int)_output_map[i][j].blue << ' ';
+            }
+            pgmfile << std::endl;
+        }
+        return true;
     }
 };
 
