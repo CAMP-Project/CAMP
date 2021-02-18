@@ -22,30 +22,33 @@ import roslib
 roslib.load_manifest('rospy')
 import numpy;
 import rospy
-from geometry_msgs.msg import Twist, Vector3, Pose
+from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Imu
 from localizer_dwm1001.msg import Tag
 from std_msgs.msg import String, Float64
 
 class KalmanFilter:
 
     def __init__(self):
+        
         # Initialize node.
         rospy.init_node('kalman_filter', anonymous = False)
+
+        self.rate = rospy.Rate(1)
 
         # Publish x, y, and heading.
         self.info_publisher = rospy.Publisher('filtered', Twist, queue_size = 10)
 
         # Subscribe to TOF Tag position, velocity, and heading.
         rospy.Subscriber('/dwm1001/tag1', Tag, self.tag_update)
-        rospy.Subscriber('/odom', Twist, self.velocity_update)
-        rospy.Subscriber('/imu', Float64, self.heading_update)
+        rospy.Subscriber('/odom', Odometry, self.velocity_update)
+        rospy.Subscriber('/imu', Imu, self.heading_update)
 
         self.position = Tag()
         self.heading = float()
         self.u = float()
 
-        # Set update rate to 10 Hz.
-        self.rate = rospy.Rate(1)
 
         # State dynamics matrix. This will be a 3 x 3 matrix.
         self.A = numpy.array([[1, 1, 1], 
@@ -91,15 +94,16 @@ class KalmanFilter:
     
     # Update velocity data.
     def velocity_update(self, data):
-        self.u = data.twist.linear.x.data
+        self.u = data.twist.twist.linear.x
+
 
     # Update heading data.
     def heading_update(self, data):
-        self.heading = data.orientation.z.data
+        self.heading = data.orientation.z
 
 
     def main(self):
-
+        
         # Predict the state:
         self.X_hat = numpy.dot(self.A, self.X_corrected) + (self.u * self.B)
 
@@ -126,17 +130,21 @@ class KalmanFilter:
         result.linear.y = self.X_corrected[1]
         result.angular.x = self.X_corrected[2]
 
+        print("x: " + str(result.linear.x) + 
+              "y: " + str(result.linear.y) + 
+              "w: " + str(result.angular.x))
+
         self.info_publisher.publish(result)
 
 if __name__ == '__main__':
     filter = KalmanFilter()
     while not rospy.is_shutdown():
     
-        try:    
+        #try:    
             filter.main()
-            rospy.spin()
-        except rospy.ROSInterruptException:
-            pass
+            rospy.sleep(1)
+        #except rospy.ROSInterruptException:
+        #    pass
     
 
 
