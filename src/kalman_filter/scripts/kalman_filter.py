@@ -131,8 +131,12 @@ class KalmanFilter:
         result.angular.x = self.X_corrected[2]
 
         print("x: " + str(result.linear.x) + 
-              "y: " + str(result.linear.y) + 
-              "w: " + str(result.angular.x))
+              "  y: " + str(result.linear.y) + 
+              "  w: " + str(result.angular.x) +
+              "\nu: " + str(self.u) +
+              "  h: " + str(self.heading) +
+              "\nxin: " +str(self.position.x) +
+              "  yin: " + str(self.position.y))
 
         self.info_publisher.publish(result)
 
