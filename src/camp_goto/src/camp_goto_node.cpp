@@ -36,6 +36,7 @@ vector<float> ranges, intensities;
 // These functions run if new info was published during a spin command.
 // They collects any data from the Scan, Imu, or Tag callbacks
 void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
+    //ROS_INFO("grabbing scan");
     angle_min = msg->angle_min;
     angle_max = msg->angle_max;
     angle_increment = msg->angle_increment;
@@ -46,9 +47,11 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
     intensities = msg->intensities;
 }
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
+    //ROS_INFO("grabbing imu");
     heading = msg->orientation.z;
 }
 void tagCallback(const localizer_dwm1001::Tag::ConstPtr& msg) {
+    //ROS_INFO("grabbing tag");
     tag_x = msg->x;
     tag_y = msg->y;
 }
@@ -71,6 +74,7 @@ void tagCallback(const localizer_dwm1001::Tag::ConstPtr& msg) {
 // This function is an idea I have to determine movement between two 2D points, possibly like a
 // current position as determined from the dwm1001 or the kalman filter. 
 void pointToPoint(ros::Publisher cmd_publisher, float go_x, float go_y) {//accept a 2d point goal as a parameter and output a Twist message?
+    //ROS_INFO("2p2 function");
     // Taking two points, both it's current position and either the long-term goal or
     // an intermediate step or obstacle correction point, this function determines
     // how to move smoothly between the points.
@@ -125,6 +129,8 @@ int main(int argc, char **argv){
 
 	// Set the loop period. '10' refers to 10 Hz and the main loop repeats at 0.1 second intervals
 	ros::Rate loop_rate(10);
+    
+    //ROS_INFO("Starting the Main");
 
 	// scan_subscriber subscribes to the lidar's scan, cmd_publisher publishes a twist, and the size of the publisher queue is set to 10.
 	ros::Subscriber scan_subscriber = nh.subscribe("scan", 10, scanCallback);
@@ -135,12 +141,12 @@ int main(int argc, char **argv){
 	while(ros::ok()) {
         //Check inputs:
         ROS_INFO("heading: %f", heading);
-        ROS_INFO("x: %f Y:%f", tag_x, tag_y);
+        //ROS_INFO("x: %f Y:%f", tag_x, tag_y);
 
 
 
        
-        pointToPoint(cmd_publisher,1,1);
+        //pointToPoint(cmd_publisher,1,1);
         // Sleep according to the loop rate above
 		loop_rate.sleep();
         // Check for new messages from subscribed nodes
