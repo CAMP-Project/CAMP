@@ -1,8 +1,9 @@
 /*
- * Edited lat by Tyler Pigott on 2/18/20201
- * This program should use the decawaves to goto a point
- * on the decawave grid, whilst avoiding big obstacles using
- * the LiDAR like in roomba_navigation.
+ * Edited lat by Tyler Pigott on 2/20/20201
+ * This program should use odometry to goto a point
+ * relative to where the robot started
+ * whilst avoiding big obstacles using
+ * the LiDAR as in in roomba_navigation.
  */
 
 
@@ -11,6 +12,7 @@
 #include <sensor_msgs/LaserScan.h>
 // #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
 
 // #include "localizer_dwm1001/Tag.h"
@@ -25,14 +27,14 @@ using namespace std;
 //const int BURGER_MAX_ANG_VEL = 2.84;
 
 // somewhat safer constants because i am scared
-const float SCALE = 5;
+const float SCALE = 2;
 const float BURGER_MAX_LIN_VEL = 0.2/SCALE; // 0.2 m/s
 const float BURGER_MAX_ANG_VEL = 1.5708/SCALE; // pi/2 rad/s or 90 deg/s
 
 //Movement Vars
 float x_vel, z_ang_vel;
 float last_x=0, last_y=0;
-float long_x, long_y;
+float long_x=0, long_y=0, cmd = 0;
 float go_x, go_y, go_distance, heading;
 
 //Scan
@@ -68,6 +70,21 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
 //     tag_x = msg->x;
 //     tag_y = msg->y;
 // }
+
+void updateLongPos(const geometry_msgs::Point::ConstPtr& msg){
+    //ROS_INFO("grabbing destination");
+    cmd = msg->z;
+    if(cmd == 1.0){
+        //Absolute mode
+        long_x = msg->x;
+        long_y = msg->y;
+    }
+    if(cmd == 2.0){
+        //relative mode
+        long_x = odom_x + msg->x;
+        long_y = odom_y + msg->y;
+    }
+}
 
 // This is the obstacle avoidance function. It is called while the robot is moving to a point to
 // check for things in the way and to avoid them. 
@@ -126,7 +143,6 @@ void pointToPoint() {//accept a 2d point goal as a parameter and output a Twist 
     // Taking two points, both it's current position and either the long-term goal or
     // an intermediate step or obstacle correction point, this function determines
     // how to move smoothly between the points.
-    geometry_msgs::Twist vel_msg;
 
     // calculate difference between current and previous positions (dx, dy)
     float dx = odom_x - last_x;
@@ -153,7 +169,7 @@ void pointToPoint() {//accept a 2d point goal as a parameter and output a Twist 
     if(z_ang_vel > BURGER_MAX_ANG_VEL) z_ang_vel = BURGER_MAX_ANG_VEL;
     if(z_ang_vel < -BURGER_MAX_ANG_VEL) z_ang_vel = -BURGER_MAX_ANG_VEL;
     x_vel = BURGER_MAX_LIN_VEL; //goes fast! might be good to slow down near detected objects, but i didn't make that yet.
-    if(go_distance < 0.03) {
+    if(go_distance < 0.1/SCALE) {
         //stop if at a final point
         x_vel = 0; 
         z_ang_vel = 0;
@@ -183,22 +199,24 @@ int main(int argc, char **argv){
     // ros::Subscriber imu_subscriber = nh.subscribe("imu", 10, imuCallback);
     ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, odomCallback);
     // ros::Subscriber tag_subscriber = nh.subscribe("dwm1001/tag1", 10, tagCallback);
+    ros::Subscriber go_pos_subscriber = nh.subscribe("go_pos", 10, updateLongPos);
 	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     	
 	while(ros::ok()) {
         //Check inputs:
         //ROS_INFO("orientation:\nw:%f\nx:%f\ny:%f\nz:%f", w,x,y,z);
         //ROS_INFO("x: %f Y:%f", tag_x, tag_y);
-
-        long_x = 2;
-        long_y = -0.1;
         //check for obstruction and set go vars
         obstacleAvoid();
         ROS_INFO("\nAt: %f, %f\nGo: %f, %f\nDistance: %f",odom_x,odom_y,go_x,go_y,go_distance);
         //Determine motor instructions from current point and the go vars
         pointToPoint();
         ROS_INFO("X: %f  Z: %f",x_vel, z_ang_vel);
-        
+        if(cmd == 0){
+            //don't move with a 0 command
+            x_vel = 0; 
+            z_ang_vel = 0;
+        }
         // Write to the vel_msg we plan to publish
 	    vel_msg.linear.x = x_vel;
 	    vel_msg.linear.y = 0;
