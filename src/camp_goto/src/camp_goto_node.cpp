@@ -11,7 +11,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Twist.h>
-#include "local_dwm1001/Tag.h" //Double check
+#include "localizer_dwm1001/Tag.h" //Double check
 
 #include <vector>
 #include <math.h>
@@ -69,7 +69,7 @@ void tagCallback(const localizer_dwm1001::Tag::ConstPtr& msg) {
 
 // This function is an idea I have to determine movement between two 2D points, possibly like a
 // current position as determined from the dwm1001 or the kalman filter. 
-void pointToPoint(float go_x, float go_y) {//accept a 2d point goal as a parameter and output a Twist message?
+void pointToPoint(ros::Publisher cmd_publisher, float go_x, float go_y) {//accept a 2d point goal as a parameter and output a Twist message?
     // Taking two points, both it's current position and either the long-term goal or
     // an intermediate step or obstacle correction point, this function determines
     // how to move smoothly between the points.
@@ -93,10 +93,10 @@ void pointToPoint(float go_x, float go_y) {//accept a 2d point goal as a paramet
     if(head_error > PI) head_error = head_error - 2*PI;
     if(head_error < 0-PI) head_error = head_error + 2*PI;
     // control turn from heading error
-    z_ang_vel = 2 * head_error; // 2 seems to be a good Kp in matlab sims
+    float z_ang_vel = 2 * head_error; // 2 seems to be a good Kp in matlab sims
     // correct ang_vel so it is within acceptable margins    
     if(z_ang_vel > BURGER_MAX_ANG_VEL) z_ang_vel = BURGER_MAX_ANG_VEL;
-    x_vel = BURGER_MAX_LIN_VEL; //goes fast! might be good to slow down near detected objects, but i didn't make that yet.
+    float x_vel = BURGER_MAX_LIN_VEL; //goes fast! might be good to slow down near detected objects, but i didn't make that yet.
     if(go_distance < 0.1) x_vel = 0; //stop if at a final point
     // Write to the vel_msg we plan to publish
 	vel_msg.linear.x = x_vel;
@@ -134,12 +134,12 @@ int main(int argc, char **argv){
 	while(ros::ok()) {
         //Check inputs:
         ROS_INFO("heading: %f", heading);
-        ROS_INFO("x: %f Y:%f", tagx, tagy);
+        ROS_INFO("x: %f Y:%f", tag_x, tag_y);
 
 
 
        
-        //pointToPoint(1,1);
+        pointToPoint(cmd_publisher,1,1);
         // Sleep according to the loop rate above
 		loop_rate.sleep();
         // Check for new messages from subscribed nodes
