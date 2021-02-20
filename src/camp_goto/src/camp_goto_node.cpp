@@ -11,7 +11,8 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Twist.h>
-#include "localizer_dwm1001/Tag.h" //Double check
+
+#include "localizer_dwm1001/Tag.h"
 
 #include <vector>
 #include <math.h>
