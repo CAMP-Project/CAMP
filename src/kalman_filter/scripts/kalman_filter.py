@@ -56,19 +56,14 @@ class KalmanFilter:
                               [1, 1, 1]])
 
         # Input array. This will be a 3 x 1 array.
-        self.B = numpy.array([1.0, 
-                              1.0, 
-                              1.0])
-
-        # Input measurement matrix. This will be a 3 x 3 matrix.
-        self.C = numpy.array([[1, 1, 1], 
-                              [1, 1, 1], 
-                              [1, 1, 1]])
+        self.B = numpy.array([[1.0], 
+                              [1.0], 
+                              [1.0]])
 
         # Process noise covariance matrix Q. This will be a 3 x 3 matrix.
         self.Q = numpy.array([[0.1, 0, 0], 
-                              [0, 0.2, 0], 
-                              [0, 0, 0.3]])
+                              [0, 3, 0], 
+                              [0, 0, 1]])
 
         # Measurement noise covariance matrix R. This will be a 3 x 3 matrix.
         self.R = numpy.array([[0.2, 0, 0], 
@@ -82,9 +77,9 @@ class KalmanFilter:
 
         # Finally, we will start with an initial prediction of state X = [0 0 0].
         # We will also start with a corrected state equal to the predicted state.
-        self.X_hat = numpy.array([0, 
-                                  0,
-                                  0])
+        self.X_hat = numpy.array([[20], 
+                                  [20],
+                                  [20]])
         self.X_corrected = self.X_hat
 
     # Update Tag data.
@@ -105,38 +100,36 @@ class KalmanFilter:
     def main(self):
         
         # Predict the state:
-        self.X_hat = numpy.dot(self.A, self.X_corrected) + (self.u * self.B)
+        self.X_hat = numpy.dot(self.A, self.X_corrected) + (self.B * self.u)
 
         # Calculate new covariance:
-        self.P = numpy.dot(self.A, numpy.dot(self.A, self.P)) + self.Q
+        self.P = numpy.dot(self.A, numpy.dot(self.P, numpy.transpose(self.A))) + self.Q
 
         # Calculate Kalman Gain:
-        K1 = numpy.linalg.inv(numpy.dot(self.C, numpy.dot(self.P, self.C)) + self.R)
-        K = numpy.dot(self.P, numpy.dot(self.C, K1))
+        K = numpy.dot(self.P, numpy.linalg.inv(self.P + self.R))
         
         # Measurement Y:
-        Y = numpy.array([self.position.x, 
-                         self.position.y, 
-                         self.heading])
+        Y = numpy.array([[self.position.x], 
+                         [self.position.y], 
+                         [self.heading]])
 
         # Correct the prediction:
-        self.X_corrected = self.X_hat + (numpy.dot(K, Y) - numpy.dot(self.C, self.X_hat))
+        self.X_corrected = self.X_hat + numpy.dot(K, Y - self.X_hat)
 
         # Correct covariance:
-        self.P = self.P - numpy.dot(K, numpy.dot(self.C, self.P))
+        self.P = self.P - numpy.dot(K, self.P)
 
         result = Twist()
         result.linear.x = self.X_corrected[0]
         result.linear.y = self.X_corrected[1]
         result.angular.x = self.X_corrected[2]
 
-        print("x: " + str(result.linear.x) + 
-              "  y: " + str(result.linear.y) + 
-              "  w: " + str(result.angular.x) +
-              "\nu: " + str(self.u) +
-              "  h: " + str(self.heading) +
-              "\nxin: " +str(self.position.x) +
-              "  yin: " + str(self.position.y))
+        print("\nvelocity: " + str(self.u) +
+              "\nkalman gain: " + str(K) + 
+              "\ncovariance: " + str(self.P) +
+              "\nx_i: " + str(self.position.x) + "  y_i: " + str(self.position.y) + " heading_i: " + str(self.heading) +
+              "\nx_o: " + str(result.linear.x) + "  y_o: " + str(result.linear.y) + " heading_o: " + str(result.angular.x) +
+              "\n")
 
         self.info_publisher.publish(result)
 
