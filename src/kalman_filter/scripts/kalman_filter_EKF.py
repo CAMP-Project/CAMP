@@ -4,13 +4,15 @@
 # Project         : Coordinated Autonomous Movement & Pathfinding (CAMP)
 # Original Date   : 2/2/2021
 # Description     : This python script filters positional data from the
-#                   Decawave TOF sensors.  
+#                   Decawave TOF sensors. This is an extention of the standard
+#                   Kalman Filter which has been specialized to handle filtering
+#                   for vehicles governed by the Unicycle model. 
 #
 #
 #
 # Change Log:
 #
-# 2/2/2021 - Sean Carda: Created script and initial methods.
+# 2/23/2021 - Sean Carda: Created script and initial methods.
 #
 #
 #
@@ -29,18 +31,14 @@ from sensor_msgs.msg import Imu
 from localizer_dwm1001.msg import Tag
 from std_msgs.msg import String, Float64
 
-class KalmanFilter:
+class EKF:
 
     def __init__(self):
-
-        with open('positions.csv', 'w') as file:
-            self.writer = csv.writer(file)
-            self.writer.writerow(['input x', 'input y', 'filtered x', 'filtered y'])
 
         # Initialize node.
         rospy.init_node('kalman_filter', anonymous = False)
 
-        self.rate = rospy.Rate(1)
+        self.rate = rospy.Rate(10)
 
         # Publish x, y, and heading.
         self.info_publisher = rospy.Publisher('filtered', Twist, queue_size = 10)
@@ -52,13 +50,16 @@ class KalmanFilter:
 
         self.position = Tag()
         self.heading = float()
-        self.u = float()
+        self.u = 1
+        self.V = float()
+        self.dt = 0.1
+        self.b = 1
 
 
         # State dynamics matrix. This will be a 3 x 3 matrix.
-        self.A = numpy.array([[1.0, 1.0, 1.0], 
-                              [1.0, 1.0, 1.0], 
-                              [1.0, 1.0, 1.0]])
+        self.A = numpy.array([[0, 0, 0], 
+                              [0, 0, 0], 
+                              [0, 0, 0]])
 
         # Input array. This will be a 3 x 1 array.
         self.B = numpy.array([[1.0], 
@@ -70,14 +71,14 @@ class KalmanFilter:
                              [0, 0, 1.0]])
 
         # Process noise covariance matrix Q. This will be a 3 x 3 matrix.
-        self.Q = numpy.array([[5, 0, 0], 
-                              [0, 10, 0], 
-                              [0, 0, 80]])
+        self.Q = numpy.array([[0.1, 0, 0], 
+                              [0, 0.2, 0], 
+                              [0, 0, 0.1]])
 
         # Measurement noise covariance matrix R. This will be a 3 x 3 matrix.
         self.R = numpy.array([[0.2, 0, 0], 
-                              [0, 0.5, 0], 
-                              [0, 0, 0.7]])
+                              [0, 0.1, 0], 
+                              [0, 0, 0.2]])
 
         # Uncertainty matrix. This will be a 3 x 3 matrix.
         self.P = numpy.array([[0, 0, 0], 
@@ -98,65 +99,57 @@ class KalmanFilter:
     
     # Update velocity data.
     def velocity_update(self, data):
-        self.u = data.twist.twist.linear.x
+        self.V = data.twist.twist.linear.x
 
 
     # Update heading data.
     def heading_update(self, data):
         self.heading = data.orientation.z
 
-
     def main(self):
-        
-        # Prediction Step:
-        self.X_hat = numpy.dot(self.A, self.X_corrected) + (self.B * self.u)
-        self.P = numpy.dot(self.A, numpy.dot(self.P, numpy.transpose(self.A))) + self.Q
-
-        # Measurement Y:
+        # Measurement sample:
         Y = numpy.array([[self.position.x], 
                          [self.position.y], 
                          [self.heading]])
 
         # Correction Step:
-        K1 = numpy.dot(self.P, self.C)
+        K1 = numpy.dot(self.P, numpy.transpose(self.C))
         K2 = numpy.linalg.inv(numpy.dot(numpy.dot(self.C, self.P), numpy.transpose(self.C)) + self.R)
         K = numpy.dot(K1, K2)
         self.X_corrected = self.X_hat + numpy.dot(K, Y - numpy.dot(self.C, self.X_hat))
         self.P = self.P - numpy.dot(numpy.dot(K, self.C), self.P)
 
+        # Prediction Step:
+
+        # Linearize:
+        self.A[0][2] = -1 * self.V * numpy.sin(self.heading)
+        self.A[1][2] = self.V * numpy.cos(self.heading)
+
+        dx = self.V * numpy.cos(self.heading)
+        dy = self.V * numpy.sin(self.heading)
+        dtheta = (self.b * self.u) * (numpy.pi / 180)
+        dX = numpy.array([[dx],
+                          [dy],
+                          [dtheta]])
+        
+        self.X_hat = self.X_corrected + (dX * self.dt)
+        dP = (numpy.dot(self.A, self.P) + numpy.dot(numpy.transpose(self.A), self.P) + self.Q)
+        self.P = self.P + (dP * self.dt)
+
+        # Save results and print to console. Log the same values in rqt.
         result = Twist()
         result.linear.x = self.X_corrected[0]
         result.linear.y = self.X_corrected[1]
         result.angular.x = self.X_corrected[2]
 
-        print("\nvelocity: " + str(self.u) +
-              "\nkalman gain: " + str(K) + 
-              "\ncovariance: " + str(self.P) +
-              "\nx_i: " + str(self.position.x) + "  y_i: " + str(self.position.y) + " heading_i: " + str(self.heading) +
+        print("\nx_i: " + str(self.position.x) + "  y_i: " + str(self.position.y) + " heading_i: " + str(self.heading) +
               "\nx_o: " + str(result.linear.x) + "  y_o: " + str(result.linear.y) + " heading_o: " + str(result.angular.x) +
               "\n")
-
-        with open('positions.csv', 'w') as file:
-            self.writer = csv.writer(file)
-            self.writer.writerow([Y[0], Y[1], result.linear.x.data, result.linear.y.data])
 
         self.info_publisher.publish(result)
 
 if __name__ == '__main__':
-    filter = KalmanFilter()
+    filter = EKF()
     while not rospy.is_shutdown():
         filter.main()
         rospy.sleep(1)
-    
-
-
-    
-
-
-
-
-
-
-
-
-
