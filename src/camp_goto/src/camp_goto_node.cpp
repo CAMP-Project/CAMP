@@ -40,8 +40,8 @@ float go_x, go_y, go_distance, heading;
 //Scan
 float angle_min, angle_max, angle_increment, scan_time, range_min, range_max;
 vector<float> ranges, intensities;
-// float tag_x=0, tag_y=0, w, x,y,z;
-float odom_x, odom_y;
+// float at_x=0, at_y=0, w, x,y,z;
+float at_x, at_y;
 
 // These functions run if new info was published during a spin command.
 // They collects any data from the Scan, Imu, or Tag callbacks
@@ -61,28 +61,48 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
 //     heading = msg->orientation.z;
 // }
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-    //ROS_INFO("grabbing odom");
-    odom_x = msg->pose.pose.position.x;
-    odom_y = msg->pose.pose.position.y;
+    ROS_INFO("grabbing odom");
+    if(cmd<3){
+        at_x = msg->pose.pose.position.x;
+        at_y = msg->pose.pose.position.y;
+    }
 }
 // void tagCallback(const localizer_dwm1001::Tag::ConstPtr& msg) {
 //     //ROS_INFO("grabbing tag");
-//     tag_x = msg->x;
-//     tag_y = msg->y;
+//     at_x = msg->x;
+//     at_y = msg->y;
 // }
+void tagCallback(const geometry_msgs::Twist::ConstPtr& msg) {
+    ROS_INFO("grabbing tag");
+    if(cmd >= 3){
+        at_x = msg->linear.x;
+        at_y = msg->linear.y;
+        //heading = msg->angular.z;
+    }
+}
 
 void updateLongPos(const geometry_msgs::Point::ConstPtr& msg){
     //ROS_INFO("grabbing destination");
     cmd = msg->z;
-    if(cmd == 1.0){
+    if(cmd == 1.0 || cmd == 3.0){
         //Absolute mode
         long_x = msg->x;
         long_y = msg->y;
     }
     if(cmd == 2.0){
         //relative mode
-        long_x = odom_x + msg->x;
-        long_y = odom_y + msg->y;
+        long_x = at_x + msg->x;
+        long_y = at_y + msg->y;
+    }
+    if(cmd == 3.0){
+        //Absolute mode
+        long_x = msg->x;
+        long_y = msg->y;
+    }
+    if(cmd == 4.0){
+        //relative mode
+        long_x = at_x + msg->x;
+        long_y = at_y + msg->y;
     }
 }
 
@@ -118,11 +138,11 @@ void obstacleAvoid() {
                 if(ranges.at(360-i) < 1 && ranges.at(360-i) != 0) left++;
             }
             if (right<left){
-                go_x = odom_x + cos(heading+PI/2);
-                go_y = odom_y + sin(heading+PI/2);
+                go_x = at_x + cos(heading+PI/2);
+                go_y = at_y + sin(heading+PI/2);
             } else {
-                go_x = odom_x + cos(heading-PI/2);
-                go_y = odom_y + sin(heading-PI/2);
+                go_x = at_x + cos(heading-PI/2);
+                go_y = at_y + sin(heading-PI/2);
             }
         } else {
             //Don't adjust course if no object in the way
@@ -131,28 +151,28 @@ void obstacleAvoid() {
         }
     } else {
         //without LiDAR data don't move
-        go_x = odom_x;
-        go_y = odom_y;
+        go_x = at_x;
+        go_y = at_y;
     }
 }
 
 // This function is an idea I have to determine movement between two 2D points, possibly like a
 // current position as determined from the dwm1001 or the kalman filter. 
-void pointToPoint() {//accept a 2d point goal as a parameter and output a Twist message?
+void pointToPoint() {//accept a 2d point at as a parameter and output a Twist message?
     //ROS_INFO("2p2 function");
-    // Taking two points, both it's current position and either the long-term goal or
+    // Taking two points, both it's current position and either the long-term at or
     // an intermediate step or obstacle correction point, this function determines
     // how to move smoothly between the points.
 
     // calculate difference between current and previous positions (dx, dy)
-    float dx = odom_x - last_x;
-    float dy = odom_y - last_y;
+    float dx = at_x - last_x;
+    float dy = at_y - last_y;
     // calculate current heading using atan2 of  dx and dy
     ROS_INFO("dy/dx: (%f/%f)",dy,dx);
-    heading = atan2(dy,dx);
-    // calculate the difference between the goal and the current position (gx, gy?)
-    float gx = go_x - odom_x;
-    float gy = go_y - odom_y;
+    if(!(dy == 0 && dx == 0)) heading = atan2(dy,dx);
+    // calculate the difference between the at and the current position (gx, gy?)
+    float gx = go_x - at_x;
+    float gy = go_y - at_y;
     // find the deired heading by with atan2 of gx, gy
     float desired_heading = atan2(gy,gx);
     // find the distance remaining to travel
@@ -168,15 +188,15 @@ void pointToPoint() {//accept a 2d point goal as a parameter and output a Twist 
     // correct ang_vel so it is within acceptable margins    
     if(z_ang_vel > BURGER_MAX_ANG_VEL) z_ang_vel = BURGER_MAX_ANG_VEL;
     if(z_ang_vel < -BURGER_MAX_ANG_VEL) z_ang_vel = -BURGER_MAX_ANG_VEL;
-    x_vel = BURGER_MAX_LIN_VEL; //goes fast! might be good to slow down near detected objects, but i didn't make that yet.
+    x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI)); //goes fast! might be good to slow down near detected objects, but i didn't make that yet.
     if(go_distance < 0.1/SCALE) {
         //stop if at a final point
         x_vel = 0; 
         z_ang_vel = 0;
     }
     //save this for future calculations: (needs fenceposting?)
-    last_x = odom_x;
-    last_y = odom_y;
+    last_x = at_x;
+    last_y = at_y;
 }
 
 // This is the main function.
@@ -199,16 +219,17 @@ int main(int argc, char **argv){
     // ros::Subscriber imu_subscriber = nh.subscribe("imu", 10, imuCallback);
     ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, odomCallback);
     // ros::Subscriber tag_subscriber = nh.subscribe("dwm1001/tag1", 10, tagCallback);
+    ros::Subscriber tag_subscriber = nh.subscribe("filtered", 10, tagCallback);
     ros::Subscriber go_pos_subscriber = nh.subscribe("go_pos", 10, updateLongPos);
 	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     	
 	while(ros::ok()) {
         //Check inputs:
         //ROS_INFO("orientation:\nw:%f\nx:%f\ny:%f\nz:%f", w,x,y,z);
-        //ROS_INFO("x: %f Y:%f", tag_x, tag_y);
+        //ROS_INFO("x: %f Y:%f", at_x, at_y);
         //check for obstruction and set go vars
         obstacleAvoid();
-        ROS_INFO("\nAt: %f, %f\nGo: %f, %f\nDistance: %f",odom_x,odom_y,go_x,go_y,go_distance);
+        ROS_INFO("\ncmd:%f\nAt: %f, %f\nGo: %f, %f\nDistance: %f",cmd,at_x,at_y,go_x,go_y,go_distance);
         //Determine motor instructions from current point and the go vars
         pointToPoint();
         ROS_INFO("X: %f  Z: %f",x_vel, z_ang_vel);
