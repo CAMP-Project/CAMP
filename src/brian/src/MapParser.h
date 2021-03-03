@@ -94,11 +94,11 @@ private:
             for (int j = 0; j < this->width; j++)
             {
                 uint8_t probability_data = map_data[k];
-                std::cout << (int)probability_data;
+                // std::cout << (int)probability_data;
                 RGB_t color;
                 if (probability_data != -1) // If data is available
                 {
-                    color.red = probability_data;
+                    color.red = 255 - probability_data;
                     color.green = color.red;
                     color.blue = color.green;
                 } 
@@ -114,7 +114,7 @@ private:
                 k++;
             }
         }
-        std::cout << std::endl;
+        // std::cout << std::endl;
     }
 
     /**

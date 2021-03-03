@@ -21,6 +21,8 @@ vector<float> ranges, intensities;
 
 MapParser mapParser;
 
+bool data_avail = false;
+
 void msgCallback(const sensor_msgs::LaserScan::ConstPtr & msg)
 {
     angle_min = msg->angle_min;
@@ -50,10 +52,12 @@ void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr & msg)
 
         mapParser.map_origin = msg->info.origin;
 
-        bool suc = mapParser.dump();
+        // bool suc = mapParser.dump();
 
-        printf("Height: %d \tWidth: %d\n", mapParser.height, mapParser.width);
-        printf("%d\n", suc);
+        data_avail = true;
+
+        // printf("%d\n", suc);
+        printf("Data Read\n");
 }
 
 int main(int argc, char **argv)
@@ -61,20 +65,36 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "brian");
 
-    
-
     geometry_msgs::Twist vel_msg;
     
     ros::NodeHandle n;
-    ros::Subscriber lidar = n.subscribe("scan", 100, msgCallback);
+    // ros::Subscriber lidar = n.subscribe("scan", 100, msgCallback);
 
     ros::Subscriber map_sub = n.subscribe("map", 100, mapCallback);
 
     MapParser mapParser;
 
-    ros::spin();
+    while(ros::ok())
+    {
+        printf("Data: %d\n", data_avail);
+        
+        if (data_avail)
+        {
+            data_avail = false;
+            printf("Height: %d \tWidth: %d\n", mapParser.height, mapParser.width);
+            if (mapParser.height > 0 && mapParser.width > 0)
+            {
+                mapParser.dump();
+                return 0;
+            }
+        }
+        // ros::spinOnce();
+        ros::spinOnce();
+    }
 
-    cout << "Height: " << mapParser.height << "\t Width: " << mapParser.width << endl;
+    // ros::spin();
+
+    // cout << "Height: " << mapParser.height << "\t Width: " << mapParser.width << endl;
     // cout << "Hello, I am Brian" << endl;
 
     return 0;

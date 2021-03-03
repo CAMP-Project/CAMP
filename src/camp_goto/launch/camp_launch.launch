@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+    <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+    <include file="$(find dwm1001_ros)/launch/dwm1001.launch" />
+    <include file="$(find kalman_filter)/launch/EFK.launch" />
+
+
+    <node pkg="camp_goto" type="camp_launch" name="camp_launch" output="screen"/>
+</launch>
