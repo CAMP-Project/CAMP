@@ -2,8 +2,7 @@
 
 <launch>
 
-  <node pkg="kalman_filter" type="kalman_filter_EKF.py" name="EKF" output="screen">
+  <node pkg="kalman_filter" type="kalman_filter_EKF.py" name="EKF" output="screen" />
   
-  </node>
   
 </launch>
