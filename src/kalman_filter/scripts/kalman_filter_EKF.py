@@ -152,4 +152,4 @@ if __name__ == '__main__':
     filter = EKF()
     while not rospy.is_shutdown():
         filter.main()
-        rospy.sleep(1)
+        rospy.sleep(0.1)

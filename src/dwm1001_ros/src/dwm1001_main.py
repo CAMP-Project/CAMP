@@ -27,6 +27,7 @@ rospy.init_node('Localizer_DWM1001', anonymous=False)
 
 # allow serial port to be detected by user
 os.popen("sudo chmod 777 /dev/ttyACM0", "w")
+os.popen("sudo chmod 777 /dev/ttyACM1", "w")
 
 # initialize ros rate 10hz
 rate = rospy.Rate(1)
