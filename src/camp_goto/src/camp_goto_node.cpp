@@ -52,11 +52,11 @@ float lastdeca_x, lastdeca_y, lastodom_x, lastodom_y;
 float decagoal_x, decagoal_y;
 
 float decaToOdomX(float x, float y){
-    return (x-offset_x)/cos(offset_theta)+(y-offset_y)/sin(offset_theta);
+    return (x-offset_x)*cos(offset_theta)+(y-offset_y)*sin(offset_theta);
 }
 
 float decaToOdomY(float x, float y){
-    return (y-offset_y)/cos(offset_theta)-(x-offset_x)/sin(offset_theta);
+    return (y-offset_y)*cos(offset_theta)-(x-offset_x)*sin(offset_theta);
 }
 
 // These functions run if new info was published during a spin command.
@@ -196,7 +196,9 @@ void checkOrientation() {
     float calc_x = odom_x*cos(offset_theta)-odom_y*sin(offset_theta)+offset_x;
     float calc_y = odom_y*cos(offset_theta)+odom_x*sin(offset_theta)+offset_y;
     // if approximation is bad, recalc. 
-    if(sqrt(pow(calc_x-deca_x,2)+pow(calc_y-deca_y,2))>0.1){
+    ROS_INFO("\nGoalDeca: (%f,%f)\nCalcDeca: (%f,%f)\nFiltDeca: (%f, %f)",decagoal_x,decagoal_y,calc_x,calc_y,deca_x,deca_y);
+    if(sqrt(pow(calc_x-deca_x,2)+pow(calc_y-deca_y,2))>1){
+        ROS_INFO("recalculating... %f",sqrt(pow(calc_x-deca_x,2)+pow(calc_y-deca_y,2)));
         offset_x=deca_x-odom_x;
         offset_y=deca_y-odom_y;
 
@@ -213,6 +215,7 @@ void checkOrientation() {
             long_y = decaToOdomY(decagoal_x,decagoal_y);
         }
     }
+    ROS_INFO("\noffset: (%f,%f) @ %f rad",offset_x,offset_y,offset_theta);
 }
 
 // This is the main function.
@@ -245,7 +248,7 @@ int main(int argc, char **argv){
 
         //check for obstruction and set go vars
         obstacleAvoid();
-        ROS_INFO("\ncmd:%f\nAt: %f, %f\nGo: %f, %f\nDistance: %f",cmd,odom_x,odom_y,go_x,go_y,go_distance);
+        ROS_INFO("\ncmd:%i\nAt: %f, %f\nGo: %f, %f\nDistance: %f",cmd,odom_x,odom_y,go_x,go_y,go_distance);
         
         //Determine motor instructions from current point and the go vars
         pointToPoint();
