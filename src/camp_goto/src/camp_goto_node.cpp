@@ -1,11 +1,20 @@
 /*
- * Edited last by Tyler Pigott on 3/2/2021
  * This program should use odometry to goto a point
  * relative to where the robot started
  * whilst avoiding big obstacles using
  * the LiDAR as in in roomba_navigation.
  * 
- * Working to add decawave navigation implemented with odometry offsets.
+ * 3/3/2021:
+ * Implemented a decawave to odometry conversion and 
+ * tested the conversion by implementing a decawave-relative
+ * navigation mode based on the odometry navigation function.
+ * 
+ * 3/9/2021:
+ * Improved obstacle avoidance by adding the "big cone" and
+ * refined waypoint interjection.
+ * Added Odometry to Decawave conversion for future uses.
+ * 
+ * TODO: backwards navigation?
  */
 
 
@@ -33,6 +42,24 @@ const float SCALE = 2;
 const float BURGER_MAX_LIN_VEL = 0.2/SCALE; // 0.2 m/s
 const float BURGER_MAX_ANG_VEL = 1.5708/SCALE; // pi/2 rad/s or 90 deg/s
 
+// Navigation Constants
+/* If the robot senses an obstacke within within
+   it's 52 degree front cone centered on 0 rad, set a new goal
+   at this angle and distance offset from it's heading.
+  (Must be positive for proper operation) */
+const float OBST_AVOID_ANGLE = PI/4;
+const float OBST_AVOID_DISTANCE = 1.0;
+/* Front and Side cone sizes are the last degree that the
+   repective cone checks for the two obstacle avoidance 
+   point injections, and the cone ranges are how far the cone
+   looks for obstacles. */ 
+const int FRONT_CONE_SIZE = 26;
+const int SIDE_CONE_SIZE = 100;
+const float FRONT_CONE_RANGE = 0.5;
+const float SIDE_CONE_RANGE = 0.3;
+const float LR_RANGE = 1.0;
+
+
 //Movement Vars
 float x_vel, z_ang_vel;
 float last_x=0, last_y=0;
@@ -51,6 +78,7 @@ float offset_x=0, offset_y=0, offset_theta=0;
 float lastdeca_x, lastdeca_y, lastodom_x, lastodom_y;
 float decagoal_x, decagoal_y;
 
+//Odom to Deca and Deca to Odom  converters:
 float decaToOdomX(float x, float y){
     return (x-offset_x)*cos(offset_theta)+(y-offset_y)*sin(offset_theta);
 }
@@ -58,6 +86,16 @@ float decaToOdomX(float x, float y){
 float decaToOdomY(float x, float y){
     return (y-offset_y)*cos(offset_theta)-(x-offset_x)*sin(offset_theta);
 }
+
+float odomToDecaX(float x, float y){
+    return x*cos(offset_theta)-y*sin(offset_theta)+offset_x;
+}
+
+float odomToDecaY(float x, float y){
+    return y*cos(offset_theta)+x*sin(offset_theta)+offset_y;
+}
+
+//TODO: add odom to deca converters. Use a point object?
 
 // These functions run if new info was published during a spin command.
 // They collects any data from the Scan, Imu, or Tag callbacks
@@ -119,34 +157,47 @@ void updateLongPos(const geometry_msgs::Point::ConstPtr& msg){
 
 // This is the obstacle avoidance function. It is called while the robot is moving to a point to
 // check for things in the way and to avoid them. 
-// TODO: update to fix corner-cutting problem
 void obstacleAvoid() {
     int left = 0;
     int right = 0;
-    float closest_front_object;
+    float closest_front_object = 500, closest_side_object = 500;
     if(ranges.size() == 360){
-        // Find how close the closest object is (55 front scans)
+        // Find how close the closest object is
         if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
-        else closest_front_object = 500;
-        for(int i = 1; i < 27; i++) {
+        for(int i = 1; i <= FRONT_CONE_SIZE; i++) {
             if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
             if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
         }
-        if(closest_front_object<0.5) {
-            ROS_INFO("---FOUND---");
+        // Check for objects on the side of the robot that it shouldn't run into.
+        for(int i = FRONT_CONE_SIZE+1; i <= SIDE_CONE_SIZE; i++) {
+            if(ranges.at(i) < closest_side_object && ranges.at(i) != 0) closest_side_object = ranges.at(i);
+            if(ranges.at(360-i) < closest_side_object && ranges.at(360-i) != 0) closest_side_object = ranges.at(360-i);
+        }
+        // Act on front objects first
+        if(closest_front_object < FRONT_CONE_RANGE) {
+            ROS_INFO("FOUND: Front object");
             // Find most desirable direction, more points is better
             for(int i = 1; i < 180; i++) {
-                if(ranges.at(i) < 1 && ranges.at(i) != 0) right++;
-                if(ranges.at(360-i) < 1 && ranges.at(360-i) != 0) left++;
+                if(ranges.at(i) < LR_RANGE && ranges.at(i) != 0) right++;
+                if(ranges.at(360-i) < LR_RANGE && ranges.at(360-i) != 0) left++;
             }
             if (right<left){
-                go_x = odom_x + cos(heading+PI/2);
-                go_y = odom_y + sin(heading+PI/2);
+                go_x = odom_x + OBST_AVOID_DISTANCE*cos(heading+OBST_AVOID_ANGLE);
+                go_y = odom_y + OBST_AVOID_DISTANCE*sin(heading+OBST_AVOID_ANGLE);
             } else {
-                go_x = odom_x + cos(heading-PI/2);
-                go_y = odom_y + sin(heading-PI/2);
+                go_x = odom_x + OBST_AVOID_DISTANCE*cos(heading-OBST_AVOID_ANGLE);
+                go_y = odom_y + OBST_AVOID_DISTANCE*sin(heading-OBST_AVOID_ANGLE);
             }
-        } else {
+        } 
+        //If no front onjects, avoid turning into side objects
+        else if(closest_side_object < SIDE_CONE_RANGE) {
+            ROS_INFO("FOUND: Side object");
+                go_x = odom_x + OBST_AVOID_DISTANCE*cos(heading);
+                go_y = odom_y + OBST_AVOID_DISTANCE*sin(heading);
+        } 
+        // with no objects to avoid, resume normal navigation.
+        else {
+            ROS_INFO("FOUND: None");
             //Don't adjust course if no object in the way
             go_x = long_x;
             go_y = long_y;
@@ -193,8 +244,8 @@ void pointToPoint() {
 
 void checkOrientation() {
     //calculate the decawave approximation
-    float calc_x = odom_x*cos(offset_theta)-odom_y*sin(offset_theta)+offset_x;
-    float calc_y = odom_y*cos(offset_theta)+odom_x*sin(offset_theta)+offset_y;
+    float calc_x = odomToDecaX(odom_x,odom_y);
+    float calc_y = odomToDecaY(odom_x,odom_y);
     // if approximation is bad, recalc. 
     ROS_INFO("\nGoalDeca: (%f,%f)\nCalcDeca: (%f,%f)\nFiltDeca: (%f, %f)",decagoal_x,decagoal_y,calc_x,calc_y,deca_x,deca_y);
     if(sqrt(pow(calc_x-deca_x,2)+pow(calc_y-deca_y,2))>1){
