@@ -13,6 +13,7 @@
  * Improved obstacle avoidance by adding the "big cone" and
  * refined waypoint interjection.
  * Added Odometry to Decawave conversion for future uses.
+ * Fixed obst. avoidance waypoint injection when at final destination.
  * 
  * TODO: backwards navigation?
  */
@@ -297,8 +298,10 @@ int main(int argc, char **argv){
         //make sure decawave-odometry translation is accurate
         checkOrientation();
 
-        //check for obstruction and set go vars
-        obstacleAvoid();
+        //check for obstruction and set go vars unless point reached.
+        if(go_distance > 0.1/SCALE) {
+            obstacleAvoid();
+        }
         ROS_INFO("\ncmd:%i\nAt: %f, %f\nGo: %f, %f\nDistance: %f",cmd,odom_x,odom_y,go_x,go_y,go_distance);
         
         //Determine motor instructions from current point and the go vars
