@@ -203,3 +203,56 @@ void checkOrientation() {
     }
     ROS_INFO("\noffset: (%f,%f) @ %f rad",offset_x,offset_y,offset_theta);
 }
+// This is the main function.
+// It contains some code to run once and a while loop for repeating actions.
+int main(int argc, char **argv){
+    // Name the node
+	ros::init(argc, argv, "brian");
+	ros::NodeHandle nh;	
+    // This is the message to send that contains motor instructions.
+	geometry_msgs::Twist vel_msg; 
+	// Set the loop period. '10' refers to 10 Hz and the main loop repeats at 0.1 second intervals
+	ros::Rate loop_rate(10);
+    
+    //ROS_INFO("Starting the Main");
+	// scan_subscriber subscribes to the lidar's scan, cmd_publisher publishes a twist, and the size of the publisher queue is set to 10.
+	ros::Subscriber scan_subscriber = nh.subscribe("scan", 10, scanCallback);
+    // ros::Subscriber imu_subscriber = nh.subscribe("imu", 10, imuCallback);
+    ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, odomCallback);
+    // ros::Subscriber tag_subscriber = nh.subscribe("dwm1001/tag1", 10, tagCallback);
+    ros::Subscriber tag_subscriber = nh.subscribe("filtered", 10, tagCallback);
+    ros::Subscriber go_pos_subscriber = nh.subscribe("go_pos", 10, updateLongPos);
+	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    	
+	while(ros::ok()) {
+        //make sure decawave-odometry translation is accurate
+        checkOrientation();
+        //check for obstruction and set go vars
+        obstacleAvoid();
+        ROS_INFO("\ncmd:%i\nAt: %f, %f\nGo: %f, %f\nDistance: %f",cmd,odom_x,odom_y,go_x,go_y,go_distance);
+        
+        //Determine motor instructions from current point and the go vars
+        pointToPoint();
+        ROS_INFO("X: %f  Z: %f",x_vel, z_ang_vel);
+        if(cmd == 0){
+            //don't move with a 0 command
+            x_vel = 0; 
+            z_ang_vel = 0;
+        }
+        // Write to the vel_msg we plan to publish
+	    vel_msg.linear.x = x_vel;
+	    vel_msg.linear.y = 0;
+	    vel_msg.linear.z = 0;
+	    vel_msg.angular.x = 0;
+	    vel_msg.angular.y = 0;
+	    vel_msg.angular.z = z_ang_vel;
+	    //vel_msg.angular.z = 0;
+        //publish vel_msg (move robot)
+	    cmd_publisher.publish(vel_msg);
+        // Sleep according to the loop rate above
+		loop_rate.sleep();
+        // Check for new messages from subscribed nodes
+		ros::spinOnce();
+	}
+	return 0;
+}
