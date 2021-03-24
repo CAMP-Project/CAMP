@@ -3,10 +3,12 @@
 ## Project Depenendencies
 * [OpenCV](https://github.com/opencv/opencv)
 * [Intel Realsense Library](https://github.com/IntelRealSense/librealsense)
+* [Multimaster FKIE](https://github.com/fkie/multimaster_fkie)
 
 ## How to build project
 
 Before building this project, be sure to install the project dependencies listed above. Once setup, run the following commands in the terminal.
+More information on building and installing multimaster_fkie can be found on its [Wiki page.](http://wiki.ros.org/multimaster_fkie)
 
 ```
 git clone https://github.com/CAMP-Project/CAMP.git
