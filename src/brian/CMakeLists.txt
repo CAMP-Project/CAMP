@@ -116,15 +116,13 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  "include",
   ${catkin_INCLUDE_DIRS}
 )
 
 file(GLOB_RECURSE SOURCE_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp",
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h",
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/*.cpp",
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" , 
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
 )
 
 

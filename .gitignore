@@ -1,5 +1,5 @@
 build/*
 devel/*
-.vscode/*
+.vscode/*.json
 *.pyc
 *.zip
