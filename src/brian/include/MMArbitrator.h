@@ -11,6 +11,7 @@
 #include <ros/node_handle.h>
 #include <ros/subscriber.h>
 #include <ros/publisher.h>
+#include <vector>
 
 class MMArbitrator
 {
@@ -23,6 +24,8 @@ public:
 private:
     std::vector<ros::Subscriber *> _subs;
     std::vector<ros::Publisher *> _pubs;
-}
 
-#endif 
+    ros::Subscriber _mm_entry_point;
+};
+
+#endif // MM_ARBITRATOR_H

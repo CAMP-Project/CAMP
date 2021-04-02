@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <!--Launch the turtlebot3 baseline objects-->
+    <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+
+    <!--Launch the DWM1001 nodes-->
+    <include file="src/dwm1001_ros/launch/dwm1001.launch" />
+
+    <!--Launch the EKF-->
+    <include file="$(find kalman_filter)/launch/EKF.launch" />
+
+    <!--Launch Turtlebot3 SLAM-->
+    <include file="$(find turtilebot3_slam)/launch/turtlebot3_slam.launch">
+        <arg name="open_rviz" value="false"/>
+    </include>
+
+
+</launch>
