@@ -1,5 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  <node pkg="gotopos" type="talker.py" name="talker" output="screen">
-  </node>
-</launch>

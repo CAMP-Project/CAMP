@@ -20,6 +20,8 @@ public:
 
     void sync(ros::NodeHandle);
 
+    // void 
+
     ~MMArbitrator();
 private:
     std::vector<ros::Subscriber *> _subs;
