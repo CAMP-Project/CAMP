@@ -12,7 +12,7 @@
     <include file="$(find kalman_filter)/launch/EKF.launch" />
 
     <!--Launch Turtlebot3 SLAM-->
-    <include file="$(find turtilebot3_slam)/launch/turtlebot3_slam.launch">
+    <include file="$(find turtlebot3_slam)/launch/turtlebot3_slam.launch">
         <arg name="open_rviz" value="false"/>
     </include>
 
