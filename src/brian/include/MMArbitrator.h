@@ -11,7 +11,10 @@
 #include <ros/node_handle.h>
 #include <ros/subscriber.h>
 #include <ros/publisher.h>
+#include <ros/service_client.h>
 #include <vector>
+
+#include "fkie_multimaster_msgs/DiscoverMasters.h"
 
 class MMArbitrator
 {
