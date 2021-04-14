@@ -14,7 +14,7 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
     // this->_odom = n.subscribe();
     // this->_map_sub = n.subscribe();
 
-    ros::ServiceClient client = n.serviceClient<fkie_multimaster_msgs::DiscoverMasters>("list_masters");
+    ros::ServiceClient client = n.serviceClient<fkie_multimaster_msgs::DiscoverMasters>("master_discovery/list_masters");
 
     fkie_multimaster_msgs::DiscoverMasters srv;
     if (client.call(srv))

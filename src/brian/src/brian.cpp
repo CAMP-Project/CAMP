@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     // geometry_msgs::Twist vel_msg;
     
     ros::NodeHandle n;
-
+    ROS_INFO("Looking for other Cores");
     MMArbitrator mma(n);
 
     // ros::Subscriber lidar = n.subscribe("scan", 100, msgCallback);
