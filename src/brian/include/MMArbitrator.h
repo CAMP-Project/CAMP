@@ -21,6 +21,7 @@
 // Standard C/C++ Libraries
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <boost/bind.hpp>
 
 // Development Libraries from within this project
@@ -59,10 +60,12 @@ private:
     ros::Subscriber _master_state;
 
     // Subscriber to the current robot odometry to later publish
-    ros::Subscriber _odom;
+    ros::Subscriber _odom_sub;
+    ros::Publisher _odom_pub;
 
     // Subscribe to the current robot map to later publish
     ros::Subscriber _map_sub;
+    ros::Publisher _map_pub;
 
     // List of other hosts on the network
     std::vector<std::string> _available;
@@ -75,13 +78,24 @@ private:
 
     std::string _current_name = "";
 
-    // Odometry sub callback 
+    geometry_msgs::Twist _my_odom;
+    nav_msgs::OccupancyGrid _my_map;
 
-    void position_callback(int foo, const geometry_msgs::Twist::ConstPtr& pos);
+    // Odometry sub callback for multimaster
 
-    // Map sub callback
+    void mm_position_callback(int foo, const geometry_msgs::Twist::ConstPtr& pos);
 
-    void map_callback(int foo, const nav_msgs::OccupancyGrid::ConstPtr& map);
+    // Odometry sub callback for local odometry
+
+    void _position_callback(const geometry_msgs::Twist::ConstPtr& pos);
+
+    // Map sub callback for multimaster
+
+    void mm_map_callback(int foo, const nav_msgs::OccupancyGrid::ConstPtr& map);
+
+    // Map sub callback for local map
+
+    void _map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map);
 
     // MasterState callback
 

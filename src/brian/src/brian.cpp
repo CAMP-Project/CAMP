@@ -79,22 +79,24 @@ int main(int argc, char **argv)
 
     // MapParser mapParser;
 
-    // while(ros::ok())
-    // {
-    //     printf("Data: %d\n", data_avail);
+    while(ros::ok())
+    {
+        // printf("Data: %d\n", data_avail);
         
-    //     if (data_avail)
-    //     {
-    //         data_avail = false;
-    //         printf("Height: %d \tWidth: %d\n", mapParser.height, mapParser.width);
-    //         if (mapParser.height > 0 && mapParser.width > 0)
-    //         {
-    //             mapParser.dump();
-    //             return 0;
-    //         }
-    //     }
-    //     ros::spinOnce();
-    // }
+        // if (data_avail)
+        // {
+        //     data_avail = false;
+        //     printf("Height: %d \tWidth: %d\n", mapParser.height, mapParser.width);
+        //     if (mapParser.height > 0 && mapParser.width > 0)
+        //     {
+        //         mapParser.dump();
+        //         return 0;
+        //     }
+        // }
+
+        mma.sync(n);
+        ros::spinOnce();
+    }
 
     // ros::spin();
 
