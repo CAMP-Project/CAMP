@@ -16,5 +16,8 @@
         <arg name="open_rviz" value="false"/>
     </include>
 
+    <!--Launch the multimaster discovery node-->
+    <include file="$(find fkie_master_discovery)/launch/master_discovery.launch"
+
 
 </launch>

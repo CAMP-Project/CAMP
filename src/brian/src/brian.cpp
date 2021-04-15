@@ -11,8 +11,10 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unistd.h>
 
 #include "MapParser.h"
+#include "MMArbitrator.h"
 
 using namespace std;
 
@@ -65,29 +67,34 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "brian");
 
-    geometry_msgs::Twist vel_msg;
+    // geometry_msgs::Twist vel_msg;
     
     ros::NodeHandle n;
+    ROS_INFO("Looking for other Cores");
+    MMArbitrator mma(n);
+
     // ros::Subscriber lidar = n.subscribe("scan", 100, msgCallback);
 
-    ros::Subscriber map_sub = n.subscribe("map", 100, mapCallback);
+    // ros::Subscriber map_sub = n.subscribe("map", 100, mapCallback);
 
-    MapParser mapParser;
+    // MapParser mapParser;
 
     while(ros::ok())
     {
-        printf("Data: %d\n", data_avail);
+        // printf("Data: %d\n", data_avail);
         
-        if (data_avail)
-        {
-            data_avail = false;
-            printf("Height: %d \tWidth: %d\n", mapParser.height, mapParser.width);
-            if (mapParser.height > 0 && mapParser.width > 0)
-            {
-                mapParser.dump();
-                return 0;
-            }
-        }
+        // if (data_avail)
+        // {
+        //     data_avail = false;
+        //     printf("Height: %d \tWidth: %d\n", mapParser.height, mapParser.width);
+        //     if (mapParser.height > 0 && mapParser.width > 0)
+        //     {
+        //         mapParser.dump();
+        //         return 0;
+        //     }
+        // }
+
+        mma.sync(n);
         ros::spinOnce();
     }
 
