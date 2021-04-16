@@ -76,6 +76,7 @@ private:
     // List of maps of all hosts on the network 
     std::vector<nav_msgs::OccupancyGrid> _maps;
 
+    // Name of the current host that is running this code
     std::string _current_name = "";
 
     geometry_msgs::Twist _my_odom;

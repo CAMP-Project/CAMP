@@ -23,7 +23,7 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
 }
 
 /**
- * @brief Sync the current nodes with what is available on the network
+ * @brief Sync the current node with what is available on the network
  * 
  * @param n NodeHandle object to use to update the parameters of this class
  */
@@ -46,15 +46,15 @@ void MMArbitrator::sync(ros::NodeHandle n)
             if(std::find(this->_available.begin(), this->_available.end(), new_host ) == this->_available.end())
             {
                 ROS_INFO("Host not found in list.");
-                ROS_INFO("Adding ROS Master %d : %s", i, new_host);
+                ROS_INFO("Adding ROS Master %d : %s", i, new_host.c_str());
                 this->_available.push_back(new_host);
 
                 // Check if subscribers exist for this object
                 ros::V_Subscriber::iterator ch = std::find_if(this->_subs.begin(), this->_subs.end(), boost::bind(&MMArbitrator::_sub_comp, this, _1, new_host.append("_odom") ) );
-                if (ch == this->_subs.end())
+                if (ch == this->_subs.end() && new_host != this->_current_name)
                 {
                     // Odom Subscriber for this host has not been setup yet. Let's set it up now.
-                    ros::Subscriber ns = n.subscribe<geometry_msgs::Twist>(new_host.append("_odom"), 1, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1), this);
+                    ros::Subscriber ns = n.subscribe<geometry_msgs::Twist>(new_host.append("_odom"), 1, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1));
                     this->_subs.push_back(ns);
                 }
             }
