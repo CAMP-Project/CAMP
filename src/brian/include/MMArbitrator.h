@@ -47,8 +47,8 @@ private:
     // Vectors to hold all the subsribers and publishers
     // that are dynamically added to the system
 
-    std::vector<ros::Subscriber *> _subs;
-    std::vector<ros::Publisher *> _pubs;
+    std::vector<ros::Subscriber> _subs;
+    std::vector<ros::Publisher> _pubs;
 
     // Multimaster entry point, this is how this system
     // finds other robots on the network
@@ -100,6 +100,8 @@ private:
     // MasterState callback
 
     void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms);
+
+    bool _sub_comp(ros::Subscriber & obj, std::string name);
 };
 
 #endif // MM_ARBITRATOR_H
