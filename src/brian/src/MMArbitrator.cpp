@@ -23,7 +23,7 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
 }
 
 /**
- * @brief Sync the current nodes with what is available on the network
+ * @brief Sync the current node with what is available on the network
  * 
  * @param n NodeHandle object to use to update the parameters of this class
  */
@@ -40,13 +40,23 @@ void MMArbitrator::sync(ros::NodeHandle n)
         ROS_INFO("Response Size: %d", s);
         for (int i = 0; i < s; i++)
         {
+            // Name of "new" host
             std::string new_host = this->_fkie_service.response.masters.at(i).name;
             // Check to see if the host acquired is already part of known hosts
-            if(!(std::find(this->_available.begin(), this->_available.end(), new_host ) != this->_available.end()))
+            if(std::find(this->_available.begin(), this->_available.end(), new_host ) == this->_available.end())
             {
                 ROS_INFO("Host not found in list.");
-                ROS_INFO("Adding ROS Master %d : %s", i, new_host);
+                ROS_INFO("Adding ROS Master %d : %s", i, new_host.c_str());
                 this->_available.push_back(new_host);
+
+                // Check if subscribers exist for this object
+                ros::V_Subscriber::iterator ch = std::find_if(this->_subs.begin(), this->_subs.end(), boost::bind(&MMArbitrator::_sub_comp, this, _1, new_host.append("_odom") ) );
+                if (ch == this->_subs.end() && new_host != this->_current_name)
+                {
+                    // Odom Subscriber for this host has not been setup yet. Let's set it up now.
+                    ros::Subscriber ns = n.subscribe<geometry_msgs::Twist>(new_host.append("_odom"), 1, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1));
+                    this->_subs.push_back(ns);
+                }
             }
             // If the current host is found, nothing else needs to be done and 
             // the loop can move onto the next element
@@ -107,6 +117,22 @@ void MMArbitrator::_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map)
  */
 void MMArbitrator::master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms)
 { this->_current_name = ms->master.name.c_str(); }
+
+/**
+ * @brief Compare the subsriber with a topic name
+ * 
+ * @param obj Subscriber object to compare
+ * @param name Name of a topic to compare
+ * @return true The subscriber objecct has the same topic name as the name string passed into the function
+ * @return false The topic name of the subscriber doesn't not match the string passed into the function
+ */
+bool MMArbitrator::_sub_comp(ros::Subscriber & obj, std::string name)
+{
+    if (obj.getTopic().compare(name) == 0)
+        return true;
+    else
+        return false;
+}
 
 /**
  * @brief Class Destructor
