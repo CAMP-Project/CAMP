@@ -13,6 +13,7 @@ Started 4/15/2021 by Tyler Pigott
 
 using namespace std;
 
+// Parameters for later
 const int min_point_count = 10;
 const float bad_theta_threshold = 100;
 const float bad_data_threshold = 5;
@@ -35,6 +36,7 @@ void tagCallback(const geometry_msgs::Twist::ConstPtr& msg) {
     deca_in_y = msg->linear.y;
 }
 
+// Mass coordinate vector commands
 void pushCoords(){
     odom_x.push_back(odom_in_x);
     odom_y.push_back(odom_in_y);
@@ -48,6 +50,7 @@ void clearCoords(){
     deca_y.clear();
 }
 
+// The beefy part
 void publishOffsets(ros::Publisher transform_publisher){
     geometry_msgs::Vector3 tr;
     float tx,ty,theta,last_theta,run;
@@ -117,12 +120,6 @@ int main(int argc, char **argv){
 	ros::Publisher transform_publisher = nh.advertise<geometry_msgs::Vector3>("transform", 10);
     
     while(ros::ok()) {
-        
-        // I bet something real fancy goes here
-        // Collect data when it comes in
-        // Save some data a distance apart from each other
-        // with a certian threshhold crossed, calculate the offsets
-        // publish them
 
         // Do this if there are no point syet
         if(odom_x.size() == 0) {
