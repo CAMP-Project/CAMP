@@ -29,32 +29,57 @@
 # 3a. If no objects are detected to impede movement, travel to waypoint, shift waypoints, and create new waypoint.
 # 3b. If an object is detected, reset the waypoint list. 
 
+# Package imports.
+import tf2_ros
 import roslib
-roslib.load_manifest('rospy')
 import numpy;
 import rospy
+roslib.load_manifest('rospy')
+
+# Message imports for object aquisition and use.
 from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion
-from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Imu
+from nav_msgs.msg import Odometry, OccupancyGrid
+from sensor_msgs.msg import Imu, LaserScan
 from localizer_dwm1001.msg import Tag
 from std_msgs.msg import String, Float64
 
 class Pathfinding_Node:
 
     def __init__(self): 
-        rospy.Subscriber('/dwm1001/tag1', Tag, self.tag_update)
-        rospy.Subscriber('/odom', Odometry, self.velocity_update)
 
+        # Introduce tf package.
+        tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(tfBuffer)
 
+        # Subscribe to important nodes.
+        rospy.Subscriber('/map', OccupancyGrid, self.updateMap)          # Subscribe to map.
+        rospy.Subscriber('/odom', Odometry, self.updateRobotPosition)    # Subscribe to odometry. ** Might not be necessary.
+        rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)       # Subscribe to lidar. 
+
+        # Create a waypoint hashmap. Stores coordinates of waypoints.
         self.waypoints = {waypoint1 : [0, 0],
-                        waypoint2 : [0, 0],
-                        waypoint3 : [0, 0],
-                        waypoint4 : [0, 0]}
+                          waypoint2 : [0, 0],
+                          waypoint3 : [0, 0],
+                          waypoint4 : [0, 0]}
 
-        self.botPosition = Point()
+
+        self.botPosition = Point()  # Variable for robot position.
+        self.map = OccupancyGrid()  # Variable for map storge. 
+        self.lidar = LaserScan()    # Variable to access parameters of the lidar.
 
     # This method will update the position of the robot relative to odometry. 
     def updateRobotPosition(self, data):
+        self.botPosition = data.pose.position
+
+    # This method will update the map data when new data is available. This methods grabs every paramater
+    # from the generated map.
+    def updateMap(self, data):
+        self.map = data
+
+    # This method will update lidar data when new data will be available. This method grabs every parameter 
+    # from the lidar node.
+    def updateLidarScan(self, data):
+        self.lidar = data
 
     # This method will read in LiDAR data to determine if the current path needs to be reset.
     def readLidar():
