@@ -6,7 +6,7 @@
     <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
 
     <!--Launch the DWM1001 nodes-->
-    <include file="src/dwm1001_ros/launch/dwm1001.launch" />
+    <!--include file="src/dwm1001_ros/launch/dwm1001.launch" /-->
 
     <!--Launch the EKF-->
     <include file="$(find kalman_filter)/launch/EKF.launch" />
@@ -17,7 +17,7 @@
     </include>
 
     <!--Launch the multimaster discovery node-->
-    <include file="$(find fkie_master_discovery)/launch/master_discovery.launch"
+    <!--include file="$(find fkie_master_discovery)/launch/master_discovery.launch" /-->
 
 
 </launch>
