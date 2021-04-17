@@ -52,6 +52,7 @@ void clearCoords(){
 
 // The beefy part
 void publishOffsets(ros::Publisher transform_publisher){
+    // i think i said that odom is the input and deca is the output.
     geometry_msgs::Vector3 tr;
     float tx,ty,theta,last_theta,run;
     float a,b,a2,b2,tx2,ty2,n,f,f2,f_prime,e;
