@@ -34,44 +34,53 @@ import tf2_ros
 import roslib
 import numpy;
 import rospy
+import tf2_geometry_msgs
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion
-from nav_msgs.msg import Odometry, OccupancyGrid
+from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point
+from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
 from sensor_msgs.msg import Imu, LaserScan
 from localizer_dwm1001.msg import Tag
 from std_msgs.msg import String, Float64
+from camp_pathfinding.msg import Waypoints
 
 class Pathfinding_Node:
 
     def __init__(self): 
 
+        rospy.init_node('pathfinding', anonymous = False)
+
+
         # Introduce tf package.
-        tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(tfBuffer)
+        self.tfBuffer = tf2_ros.Buffer()
+        self.transformListener = tf2_ros.TransformListener(self.tfBuffer)
 
         # Subscribe to important nodes.
         rospy.Subscriber('/map', OccupancyGrid, self.updateMap)          # Subscribe to map.
 
-        #***************************************
-        # Need the rqt node name of this topic
-        #***************************************
-        rospy.Subscriber(' ', MapMetaData, self.getMapOrigin)       # Subscribe to lidar. 
+        # Subscribed to map meta data node. Could provide useful information.
+        rospy.Subscriber('/map_metadata', MapMetaData, self.getMapOrigin)       # Subscribe to lidar. 
         
-        
+        # Subscribe to robot odometry.
         rospy.Subscriber('/odom', Odometry, self.updateRobotPosition)    # Subscribe to odometry. ** Might not be necessary.
+        
+        # Subscribe to LiDAR.
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)       # Subscribe to lidar. 
 
         # This will publish the computed waypoint information.
         self.info_publisher = rospy.Publisher('waypointList', Waypoints, queue_size = 10)
 
         # Create a waypoint hashmap. Stores coordinates of waypoints.
-        self.waypoints = {waypoint1 : [0, 0],
-                          waypoint2 : [0, 0],
-                          waypoint3 : [0, 0],
-                          waypoint4 : [0, 0]}
-
+        # [x_coordinate, y_doordinate, relative_frame]
+        # relative frames:
+        # 0: Stop
+        # 1: Odometry
+        # 2: Decawave
+        self.waypoints = {1 : Point(0, 0, 0),
+                          2 : Point(0, 0, 0),
+                          3 : Point(0, 0, 0),
+                          4 : Point(0, 0, 0)}
 
         self.botPosition = Point()                        # Variable for robot position.
         self.map = OccupancyGrid()                        # Variable for map storge. 
@@ -83,7 +92,7 @@ class Pathfinding_Node:
 
     # This method will update the position of the robot relative to odometry. 
     def updateRobotPosition(self, data):
-        self.botPosition = data.pose.position
+        self.botPosition = data.pose.pose.position
 
     # This method will update the map data when new data is available. This methods grabs every paramater
     # from the generated map.
@@ -105,40 +114,42 @@ class Pathfinding_Node:
     # This method needs to read lidar values at a specified angle. I don't know
     # exactly how the lidar data appears in an array nor which values need to be changed
     #**************************************************************************************
-    def readLidar():
-        if self.lidar.intensities[0] > 1:
-            self.obstacleDetect = True
-            resetWaypoints()
-        else:
-            self.obstacleDetect = False
-            createNewWaypoint()
+    def main(self):
 
-    # This method will reset the waypoint list.
-    #**************************************************************************************
-    # This method will depend entirely on the angle at which the robot is facing, which
-    # needs to be read relative to the map matrix.
-    #**************************************************************************************
-    def resetWaypoints():
-        for point in self.waypoints.keys():
-            self.waypoints[point] = [0, 0]
+        # This method will reset the waypoint list.
+        #**************************************************************************************
+        # This method will depend entirely on the angle at which the robot is facing, which
+        # needs to be read relative to the map matrix.
+        #**************************************************************************************
+        def resetWaypoints():
+            for point in self.waypoints.keys():
+                self.waypoints[point] = [0, 0]
     
-    # This method will create a new waypoint once the robot is within a certain distance
-    # to waypoint 1.
-    def createNewWaypoint():
-        print("This is temporary!")
+        # This method will create a new waypoint once the robot is within a certain distance
+        # to waypoint 1.
+        def createNewWaypoint():
+            print("This is temporary!")
 
-    def publishWaypoints():
-        waypointList = Waypoints()
-        waypointList.waypointOne = waypoints.get(waypoint1)
-        waypointList.waypointTwo = waypoints.get(waypoint2)
-        waypointList.waypointThree = waypoints.get(waypoint3)
-        waypointList.waypointFour = waypoints.get(waypoint4)
-        self.info_publisher.publish(waypointList)
 
+        def getRoboMapPosition():
+            transform = self.tfBuffer.lookup_transform('map', 'odom', rospy.Time())
+            return tf2_geometry_msgs.do_transform_pose(self.botPosition, transform)     
+
+        def publishWaypoints():
+            index = 1
+            waypointList = Waypoints()
+            waypointList.waypoint1 = self.waypoints.get(1)
+            waypointList.waypoint2 = self.waypoints.get(2)
+            waypointList.waypoint3 = self.waypoints.get(3)
+            waypointList.waypoint4 = self.waypoints.get(4)
+            self.info_publisher.publish(waypointList)
+
+        print(getRoboMapPosition())
+        
 
 if __name__ == '__main__':
     path = Pathfinding_Node()
     while not rospy.is_shutdown():
-        readLidar()
+        path.main()
         rospy.sleep(0.1)
 
