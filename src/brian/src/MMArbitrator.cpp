@@ -15,11 +15,30 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
     // Subscribe to the current robot's map and odometry
     this->_odom_sub = n.subscribe("odom", 10, &MMArbitrator::_position_callback, this);
     this->_map_sub = n.subscribe("map", 10, &MMArbitrator::_map_callback, this);
+
     
+    
+    
+ 
+    // Spin once to get collect inforamion for this system
+    ros::spinOnce();
+
+    // Advertise the current robot's map and odometry under a different name
+    // if (this->_current_name.size() < 2)
+    // {
+    //     std::string new_odom_name = this->_current_name;
+    //     new_odom_name.append("/odom");
+    //     std::string new_map_name = this->_current_name;
+    //     new_map_name.append("/map");
+    //     this->_odom_pub = n.advertise<geometry_msgs::Twist>(new_odom_name, 10);
+    //     this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10);
+    // }
+
+    // Spin once again for fun :)
+    ros::spinOnce();
+
     // Sync up the list of available hosts to the what is 
     sync(n);
-
-    ros::spinOnce();
 }
 
 /**
@@ -30,6 +49,11 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
 void MMArbitrator::sync(ros::NodeHandle n)
 {
     ros::spinOnce();
+
+    // Lets publish the current robot's information before grabbing other things
+    // this->_map_pub.publish(this->_my_map);
+    // this->_odom_pub.publish(this->_my_odom);
+
     if (this->_mm_entry_point.call(this->_fkie_service))
     {
         int s = this->_fkie_service.response.masters.size();
@@ -42,6 +66,16 @@ void MMArbitrator::sync(ros::NodeHandle n)
         {
             // Name of "new" host
             std::string new_host = this->_fkie_service.response.masters.at(i).name;
+
+            // Remove illegal characters from new host name
+            new_host.erase(std::remove_if(new_host.begin(), new_host.end(),
+                            [](const char c)
+                            {return c=='.';}), new_host.end());
+
+            //Check is the new host name is number and convert to something better
+            if (is_number(new_host))
+                new_host = this->shift_num_to_char(new_host);
+
             // Check to see if the host acquired is already part of known hosts
             if(std::find(this->_available.begin(), this->_available.end(), new_host ) == this->_available.end())
             {
@@ -50,12 +84,14 @@ void MMArbitrator::sync(ros::NodeHandle n)
                 this->_available.push_back(new_host);
 
                 // Check if subscribers exist for this object
-                ros::V_Subscriber::iterator ch = std::find_if(this->_subs.begin(), this->_subs.end(), boost::bind(&MMArbitrator::_sub_comp, this, _1, new_host.append("_odom") ) );
+                ros::V_Subscriber::iterator ch = std::find_if(this->_subs.begin(), this->_subs.end(), boost::bind(&MMArbitrator::_sub_comp, this, _1, new_host+"/odom" ) );
                 if (ch == this->_subs.end() && new_host != this->_current_name)
                 {
                     // Odom Subscriber for this host has not been setup yet. Let's set it up now.
-                    ros::Subscriber ns = n.subscribe<geometry_msgs::Twist>(new_host.append("_odom"), 1, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1));
-                    this->_subs.push_back(ns);
+                    ros::Subscriber new_odom = n.subscribe<geometry_msgs::Twist>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1));
+                    this->_subs.push_back(new_odom);
+                    ros::Subscriber new_map = n.subscribe<nav_msgs::OccupancyGrid>(new_host+"/map", 10, boost::bind(&MMArbitrator::mm_map_callback, this, (int)this->_subs.size(), _1));
+                    this->_subs.push_back(new_map);
                 }
             }
             // If the current host is found, nothing else needs to be done and 
@@ -116,7 +152,16 @@ void MMArbitrator::_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map)
  * @param ms MasterState object
  */
 void MMArbitrator::master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms)
-{ this->_current_name = ms->master.name.c_str(); }
+{
+    // Initialize the current name string if it is empty, no need to update it everytime this class is called.
+    if (this->_current_name.empty())
+    {
+    this->_current_name = ms->master.name;
+    this->_current_name.erase(std::remove_if(this->_current_name.begin(), this->_current_name.end(),
+                            [](const char c)
+                            {return c=='.';}), this->_current_name.end());
+    }
+}
 
 /**
  * @brief Compare the subsriber with a topic name
@@ -142,4 +187,22 @@ MMArbitrator::~MMArbitrator()
     this->_available.clear();
     this->_positions.clear();
     this->_maps.clear();
+}
+
+bool MMArbitrator::is_number(std::string s)
+{
+    for (int i = 0; i < s.length(); i++)
+        if(isdigit(s[i]) == false)
+            return false;
+    
+    return true;
+}
+
+std::string MMArbitrator::shift_num_to_char(std::string s)
+{
+    // lets do some magic 
+    for (int i = 0; i < s.length(); i++)
+        s[i] +=  17;
+
+    return s;    
 }
