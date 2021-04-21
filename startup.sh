@@ -4,4 +4,6 @@ source devel/setup.bash
 # TODO: Add additinal laaunch commands to this startup file
 
 export TURTLEBOT3_MODEL='burger'
-roslaunch brian brian.launch
+sudo chmod 777 /dev/ttyACM0
+sudo chmod 777 /dev/ttyACM1
+#roslaunch brian brian.launch

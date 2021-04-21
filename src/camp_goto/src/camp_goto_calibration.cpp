@@ -15,10 +15,11 @@ using namespace std;
 
 // Parameters for later
 const int min_point_count = 10;
-const float bad_theta_threshold = 100;
+const float new_point_distance = 0.1;
+const float bad_theta_threshold = 20;
 const float bad_data_threshold = 5;
 const float theta_found_threshold = 0.001;
-const float d_theta = 0.001;
+const float d_theta = 0.0001;
 float theta_0 = 0;
 
 vector<float> odom_x, odom_y, deca_x, deca_y;
@@ -60,6 +61,7 @@ void publishOffsets(ros::Publisher transform_publisher){
     theta = theta_0;
     last_theta = theta_0;
     run = 1;
+    int attempt = 1;
 
     while(run == 1){
         run = 0;
@@ -93,9 +95,18 @@ void publishOffsets(ros::Publisher transform_publisher){
         else {
             e = 0;
             for(int i = 0; i < n; i++){
-                e = e + + pow((a*odom_x[i]-b*odom_y[i]+tx-deca_x[i]),2)+pow((b*odom_x[i]+a*odom_y[i]+ty-deca_y[i]),2);
+                e = e + pow((a*odom_x[i]-b*odom_y[i]+tx-deca_x[i]),2)+pow((b*odom_x[i]+a*odom_y[i]+ty-deca_y[i]),2);
             }
-            if(e > bad_theta_threshold) run = 1;
+            ROS_INFO("-- Attempt: %d --",e);
+            ROS_INFO("Error: %f",e);
+            ROS_INFO("Theta: %f",theta);
+            if(e > bad_theta_threshold) {
+                theta = theta - theta/abs(theta)*PI;
+                run = 1;
+                attempt++;
+                if(attempt > 3) return;
+
+            }
             //else if(e > bad_data_threshold) do something that fixes it i guess? throw everything out?
         }
 
@@ -124,18 +135,23 @@ int main(int argc, char **argv){
 
         // Do this if there are no point syet
         if(odom_x.size() == 0) {
+            ROS_INFO("First Push");
             pushCoords();
+            ROS_INFO("size: %d",odom_x.size());
         }
 
         // Do this if its time for another point
-        if(sqrt(pow((odom_x.back() - odom_in_x),2) + pow((odom_y.back() - odom_in_y),2))>0.1) {
+        if(sqrt(pow((odom_x.back() - odom_in_x),2) + pow((odom_y.back() - odom_in_y),2))>new_point_distance) {
             pushCoords();
+            ROS_INFO("size: %d",odom_x.size());
         }
 
         // Do this if there are enough points to do a conversion
         if(odom_x.size() >= min_point_count){
+            ROS_INFO("Publishing...");
             publishOffsets(transform_publisher);
             clearCoords();
+            ROS_INFO("size: %d",odom_x.size());
         }
 
 		loop_rate.sleep();
