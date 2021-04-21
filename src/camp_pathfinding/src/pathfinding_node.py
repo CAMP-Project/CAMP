@@ -53,8 +53,18 @@ class Pathfinding_Node:
 
         # Subscribe to important nodes.
         rospy.Subscriber('/map', OccupancyGrid, self.updateMap)          # Subscribe to map.
+
+        #***************************************
+        # Need the rqt node name of this topic
+        #***************************************
+        rospy.Subscriber(' ', MapMetaData, self.getMapOrigin)       # Subscribe to lidar. 
+        
+        
         rospy.Subscriber('/odom', Odometry, self.updateRobotPosition)    # Subscribe to odometry. ** Might not be necessary.
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)       # Subscribe to lidar. 
+
+        # This will publish the computed waypoint information.
+        self.info_publisher = rospy.Publisher('waypointList', Waypoints, queue_size = 10)
 
         # Create a waypoint hashmap. Stores coordinates of waypoints.
         self.waypoints = {waypoint1 : [0, 0],
@@ -63,9 +73,13 @@ class Pathfinding_Node:
                           waypoint4 : [0, 0]}
 
 
-        self.botPosition = Point()  # Variable for robot position.
-        self.map = OccupancyGrid()  # Variable for map storge. 
-        self.lidar = LaserScan()    # Variable to access parameters of the lidar.
+        self.botPosition = Point()                        # Variable for robot position.
+        self.map = OccupancyGrid()                        # Variable for map storge. 
+        self.lidar = LaserScan()                          # Variable to access parameters of the lidar.
+        self.mapOrigin = MapMetaData()                    # Stores meta data about the SLAM map.
+
+        self.obstacleDetect = False                       # Indicates whether an object is blocking the path of the robot.
+        self.entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0] # This will hold on to entropy data to determine where to put a new waypoint.
 
     # This method will update the position of the robot relative to odometry. 
     def updateRobotPosition(self, data):
@@ -76,24 +90,55 @@ class Pathfinding_Node:
     def updateMap(self, data):
         self.map = data
 
+    # This method will call the meta data from the map.
+    def getMapOrigin(self, data):
+        self.mapOrigin = data
+
     # This method will update lidar data when new data will be available. This method grabs every parameter 
     # from the lidar node.
     def updateLidarScan(self, data):
         self.lidar = data
 
+
     # This method will read in LiDAR data to determine if the current path needs to be reset.
+    #**************************************************************************************
+    # This method needs to read lidar values at a specified angle. I don't know
+    # exactly how the lidar data appears in an array nor which values need to be changed
+    #**************************************************************************************
     def readLidar():
+        if self.lidar.intensities[0] > 1:
+            self.obstacleDetect = True
+            resetWaypoints()
+        else:
+            self.obstacleDetect = False
+            createNewWaypoint()
 
     # This method will reset the waypoint list.
+    #**************************************************************************************
+    # This method will depend entirely on the angle at which the robot is facing, which
+    # needs to be read relative to the map matrix.
+    #**************************************************************************************
     def resetWaypoints():
+        for point in self.waypoints.keys():
+            self.waypoints[point] = [0, 0]
     
     # This method will create a new waypoint once the robot is within a certain distance
     # to waypoint 1.
     def createNewWaypoint():
+        print("This is temporary!")
+
+    def publishWaypoints():
+        waypointList = Waypoints()
+        waypointList.waypointOne = waypoints.get(waypoint1)
+        waypointList.waypointTwo = waypoints.get(waypoint2)
+        waypointList.waypointThree = waypoints.get(waypoint3)
+        waypointList.waypointFour = waypoints.get(waypoint4)
+        self.info_publisher.publish(waypointList)
 
 
 if __name__ == '__main__':
     path = Pathfinding_Node()
     while not rospy.is_shutdown():
-        print("Something should happen here!")
+        readLidar()
+        rospy.sleep(0.1)
 
