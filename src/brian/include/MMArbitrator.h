@@ -78,7 +78,7 @@ private:
 
     // Information of the current host that is running this code
     fkie_multimaster_msgs::MasterState _my_state;
-    std::string _current_name = "";
+    std::string _current_name;
 
     geometry_msgs::Twist _my_odom;
     nav_msgs::OccupancyGrid _my_map;

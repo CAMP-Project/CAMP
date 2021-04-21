@@ -10,34 +10,12 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
     // Setup client for the multimaster entry point
     this->_mm_entry_point = n.serviceClient<fkie_multimaster_msgs::DiscoverMasters>("master_discovery/list_masters");
     this->_master_state = n.subscribe("master_discovery/changes", 10, &MMArbitrator::master_state_callback, this);
-    ros::spinOnce(); // call the master state callback function
 
     // Subscribe to the current robot's map and odometry
     this->_odom_sub = n.subscribe("odom", 10, &MMArbitrator::_position_callback, this);
     this->_map_sub = n.subscribe("map", 10, &MMArbitrator::_map_callback, this);
 
-    
-    
-    
- 
-    // Spin once to get collect inforamion for this system
-    ros::spinOnce();
-
-    // Advertise the current robot's map and odometry under a different name
-    // if (this->_current_name.size() < 2)
-    // {
-    //     std::string new_odom_name = this->_current_name;
-    //     new_odom_name.append("/odom");
-    //     std::string new_map_name = this->_current_name;
-    //     new_map_name.append("/map");
-    //     this->_odom_pub = n.advertise<geometry_msgs::Twist>(new_odom_name, 10);
-    //     this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10);
-    // }
-
-    // Spin once again for fun :)
-    ros::spinOnce();
-
-    // Sync up the list of available hosts to the what is 
+    // Sync up the list of available hosts to the rest of the system
     sync(n);
 }
 
@@ -50,16 +28,32 @@ void MMArbitrator::sync(ros::NodeHandle n)
 {
     ros::spinOnce();
 
-    // Lets publish the current robot's information before grabbing other things
-    // this->_map_pub.publish(this->_my_map);
-    // this->_odom_pub.publish(this->_my_odom);
-
     if (this->_mm_entry_point.call(this->_fkie_service))
     {
         int s = this->_fkie_service.response.masters.size();
         // If the number of hosts is the same between runs, no need to run everything again
         if (this->_available.size() == s)
+        {
+            // Advertise the current robot's map and odometry under a different name
+            ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), _current_name.size());
+            if (this->_current_name.size() > 0 && _map_pub.getTopic().empty())
+            {
+                ROS_INFO("Setting up my publishers");
+                std::string new_odom_name = this->_current_name;
+                new_odom_name.append("/odom");
+                std::string new_map_name = this->_current_name;
+                new_map_name.append("/map");
+                this->_odom_pub = n.advertise<geometry_msgs::Twist>(new_odom_name, 10);
+                this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10);
+            }
+            // Lets publish the current robot's information before grabbing other things
+            if (this->_current_name.size() > 2)
+            {
+                this->_map_pub.publish(this->_my_map);
+                this->_odom_pub.publish(this->_my_odom);
+            }
             return;
+        }
         
         ROS_INFO("Response Size: %d", s);
         for (int i = 0; i < s; i++)
@@ -101,8 +95,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
     else
         ROS_INFO("Error calling master_discovery/list_masters service");
 
-    // Update callback functions
-    ros::spinOnce();
+    ROS_INFO("End of initial sync");
 }
 
 /**
@@ -154,12 +147,15 @@ void MMArbitrator::_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map)
 void MMArbitrator::master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms)
 {
     // Initialize the current name string if it is empty, no need to update it everytime this class is called.
+    this->_my_state.master = ms->master;
+    this->_my_state.state = ms->state;
+    ROS_INFO("Somebody called the master state callback!!!");
     if (this->_current_name.empty())
     {
-    this->_current_name = ms->master.name;
-    this->_current_name.erase(std::remove_if(this->_current_name.begin(), this->_current_name.end(),
-                            [](const char c)
-                            {return c=='.';}), this->_current_name.end());
+        this->_current_name = ms->master.name;
+        this->_current_name.erase(std::remove_if(this->_current_name.begin(), this->_current_name.end(),
+                                [](const char c)
+                                {return c=='.';}), this->_current_name.end());
     }
 }
 
