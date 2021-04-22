@@ -1,9 +1,9 @@
 /*
- * Edited last by Tyler Pigott on 4/17/2021
- * I'm going to strip this down a bit to make it usefull
- * for the new pathfinding algorithm.
+ * Edited last by Tyler Pigott on 4/22/2021
+ * Some changes were made to make the robot faster,
+ * give more useful debug info,
+ * and recalculate the goal when navigating in modes 3/4 and transform updates.
  */
- // TODO: recalculate deca-based odom goal occasionally in case of discontinuity
 
 // ROS Default Header File
 #include <ros/ros.h>
@@ -20,7 +20,7 @@ using namespace std;
 //const int BURGER_MAX_LIN_VEL = 0.22;
 //const int BURGER_MAX_ANG_VEL = 2.84;
 // somewhat safer constants because i am scared
-const float SCALE = 2;
+const float SCALE = 1;
 const float BURGER_MAX_LIN_VEL = 0.2/SCALE; // 0.2 m/s
 const float BURGER_MAX_ANG_VEL = 1.5708/SCALE; // pi/2 rad/s or 90 deg/s
 
@@ -36,14 +36,13 @@ vector<float> ranges, intensities;
 float odom_x, odom_y;
 float deca_x, deca_y;
 float tx=0, ty=0, theta=0;
-float lastdeca_x, lastdeca_y, lastodom_x, lastodom_y;
 float decagoal_x, decagoal_y;
 
 float odom2decaX(float x, float y) {
-    return x+cos(theta)-y*sin(theta)+tx;
+    return x*cos(theta)-y*sin(theta)+tx;
 }
 float odom2decaY(float x, float y) {
-    return x+sin(theta)+y*cos(theta)+ty;
+    return x*sin(theta)+y*cos(theta)+ty;
 }
 
 float deca2OdomX(float x, float y){
@@ -80,28 +79,32 @@ void offsetCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
     tx = msg->x;
     ty = msg->y;
     theta = msg->z;
+    // update goal if navigating via decawave.
+    if(cmd == 3 || cmd == 4){
+        go_x = deca2OdomX(decagoal_x,decagoal_y);
+        go_y = deca2OdomY(decagoal_x,decagoal_y);
+    }
+    
 }
-// This function determines the point the robot ill travel to next. It runs each time the talker sends a point.
+// This function determines the point the robot will travel to next. It runs each time the talker sends a point.
 void updateLongPos(const geometry_msgs::Point::ConstPtr& msg){
     //ROS_INFO("grabbing destination");
     cmd = msg->z;
     if(cmd == 1 || cmd ==2){
         go_x = msg->x;
         go_y = msg->y;
-    }
-    if(cmd == 2){
-        //relative mode
-        go_x += odom_x;
-        go_y += odom_y;
-    }
-    if(cmd == 3){
+        if(cmd == 2){
+            //relative mode
+            go_x += odom_x;
+            go_y += odom_y;
+        }
+    } else if(cmd == 3){
         //convert decawave to odometry
         decagoal_x = msg->x;
         decagoal_y = msg->y;
         go_x = deca2OdomX(decagoal_x,decagoal_y);
         go_y = deca2OdomY(decagoal_x,decagoal_y);
-    }
-    if(cmd == 4){
+    } else if(cmd == 4){
         //convert decawave to odometry (relative to current decawave location)
         decagoal_x = deca_x+msg->x;
         decagoal_y = deca_y+msg->y;
@@ -136,24 +139,23 @@ bool somethingInFront() {
 void pointToPoint() {
     float dx = odom_x - last_x;
     float dy = odom_y - last_y;
-    ROS_INFO("Odom: (%f/,%f)",odom_x,odom_y);
     if(!(dy == 0 && dx == 0)) heading = atan2(dy,dx);
     float gx = go_x - odom_x;
     float gy = go_y - odom_y;
-    ROS_INFO("Go: (%f/,%f)",go_x,go_y);
     float desired_heading = atan2(gy,gx);
     go_distance = sqrt(gx*gx+gy*gy);
     
     float head_error = desired_heading - heading;
     if(head_error > PI) head_error = head_error - 2*PI;
     if(head_error < 0-PI) head_error = head_error + 2*PI;
-    ROS_INFO("\ndes: %f\nhed: %f\nerr: %f",desired_heading,heading,head_error);
+    //ROS_INFO("\ndes: %f\nhed: %f\nerr: %f",desired_heading,heading,head_error);
     
     //TODO: implement better control
     z_ang_vel = 2.0/SCALE * head_error; // 2 seems to be a good Kp in matlab sims
     if(z_ang_vel > BURGER_MAX_ANG_VEL) z_ang_vel = BURGER_MAX_ANG_VEL;
     if(z_ang_vel < -BURGER_MAX_ANG_VEL) z_ang_vel = -BURGER_MAX_ANG_VEL;
-    x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI));
+    //x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI));
+    x_vel = BURGER_MAX_LIN_VEL*(0.2+0.8*(1-abs(head_error)/PI)); //this one should turn tighter. 
     if(go_distance < 0.1/SCALE) {
         //stop if at a final point
         x_vel = 0; 
@@ -161,6 +163,7 @@ void pointToPoint() {
     }
     last_x = odom_x;
     last_y = odom_y;
+    ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nMode:   [%1.0f]\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,cmd,x_vel,z_ang_vel);
 }
 
 // This is the main function.
@@ -181,7 +184,6 @@ int main(int argc, char **argv){
 	while(ros::ok()) {
         //Determine motor instructions from current point and the go vars
         pointToPoint();
-        ROS_INFO("X: %f  Z: %f",x_vel, z_ang_vel);
         if(cmd == 0 || somethingInFront()){
             x_vel = 0; 
             z_ang_vel = 0;
