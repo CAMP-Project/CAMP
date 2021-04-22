@@ -3,7 +3,7 @@
  * I'm going to strip this down a bit to make it usefull
  * for the new pathfinding algorithm.
  */
-
+ // TODO: recalculate deca-based odom goal occasionally in case of discontinuity
 
 // ROS Default Header File
 #include <ros/ros.h>
@@ -136,10 +136,11 @@ bool somethingInFront() {
 void pointToPoint() {
     float dx = odom_x - last_x;
     float dy = odom_y - last_y;
-    ROS_INFO("dy/dx: (%f/%f)",dy,dx);
+    ROS_INFO("Odom: (%f/,%f)",odom_x,odom_y);
     if(!(dy == 0 && dx == 0)) heading = atan2(dy,dx);
     float gx = go_x - odom_x;
     float gy = go_y - odom_y;
+    ROS_INFO("Go: (%f/,%f)",go_x,go_y);
     float desired_heading = atan2(gy,gx);
     go_distance = sqrt(gx*gx+gy*gy);
     
