@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <boost/bind.hpp>
 
-// Development Libraries from within this project
+// Development Libraries from within this project as defined in CMakeLists.txt
 #include "fkie_multimaster_msgs/DiscoverMasters.h"
 #include "fkie_multimaster_msgs/MasterState.h"
 
@@ -76,11 +76,14 @@ private:
     // List of maps of all hosts on the network 
     std::vector<nav_msgs::OccupancyGrid> _maps;
 
-    // Name of the current host that is running this code
-    std::string _current_name = "";
+    // Information of the current host that is running this code
+    fkie_multimaster_msgs::MasterState _my_state;
+    std::string _current_name;
 
     geometry_msgs::Twist _my_odom;
     nav_msgs::OccupancyGrid _my_map;
+
+    
 
     // Odometry sub callback for multimaster
 
@@ -103,6 +106,10 @@ private:
     void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms);
 
     bool _sub_comp(ros::Subscriber & obj, std::string name);
+
+    bool is_number(std::string);
+
+    std::string shift_num_to_char(std::string);
 };
 
 #endif // MM_ARBITRATOR_H

@@ -70,6 +70,8 @@ int main(int argc, char **argv)
     // geometry_msgs::Twist vel_msg;
     
     ros::NodeHandle n;
+    ros::Rate r(10);
+
     ROS_INFO("Looking for other Cores");
     MMArbitrator mma(n);
 
@@ -95,8 +97,14 @@ int main(int argc, char **argv)
         // }
 
         mma.sync(n);
+
+        ROS_INFO("sync success");
+
         ros::spinOnce();
+        r.sleep();
     }
+
+    ROS_INFO("How did we get here?!?!");
 
     // ros::spin();
 

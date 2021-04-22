@@ -1,6 +1,6 @@
 # Message definition for waypoints.
 
-float32[] waypointOne
-float32[] waypointTwo
-float32[] waypointThree
-float32[] waypointFour
+geometry_msgs/Point waypoint1
+geometry_msgs/Point waypoint2
+geometry_msgs/Point waypoint3
+geometry_msgs/Point waypoint4
