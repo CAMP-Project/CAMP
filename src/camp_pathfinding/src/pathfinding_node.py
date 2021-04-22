@@ -34,16 +34,18 @@ import tf2_ros
 import roslib
 import numpy;
 import rospy
-import tf2_geometry_msgs
+import tf2_geometry_msg
+import exceptions.
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point
+from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point, TransformStamped, PoseStamped
 from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
 from sensor_msgs.msg import Imu, LaserScan
 from localizer_dwm1001.msg import Tag
 from std_msgs.msg import String, Float64
 from camp_pathfinding.msg import Waypoints
+from tf2_msgs.msg import TFMessage
 
 class Pathfinding_Node:
 
@@ -60,13 +62,15 @@ class Pathfinding_Node:
         rospy.Subscriber('/map', OccupancyGrid, self.updateMap)          # Subscribe to map.
 
         # Subscribed to map meta data node. Could provide useful information.
-        rospy.Subscriber('/map_metadata', MapMetaData, self.getMapOrigin)       # Subscribe to lidar. 
+        rospy.Subscriber('/map_metadata', MapMetaData, self.getMapOrigin)       # Subscribe to map meta data. 
         
         # Subscribe to robot odometry.
         rospy.Subscriber('/odom', Odometry, self.updateRobotPosition)    # Subscribe to odometry. ** Might not be necessary.
         
         # Subscribe to LiDAR.
-        rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)       # Subscribe to lidar. 
+        rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)       # Subscribe to lidar.
+
+        rospy.Subscriber('/tf_static', TFMessage, self.staticUpdate)  # Subscribe to static transform frames.
 
         # This will publish the computed waypoint information.
         self.info_publisher = rospy.Publisher('waypointList', Waypoints, queue_size = 10)
@@ -82,7 +86,8 @@ class Pathfinding_Node:
                           3 : Point(0, 0, 0),
                           4 : Point(0, 0, 0)}
 
-        self.botPosition = Point()                        # Variable for robot position.
+        self.baseLink = PoseStamped()
+        self.botPosition = PoseStamped()                       # Variable for robot position.
         self.map = OccupancyGrid()                        # Variable for map storge. 
         self.lidar = LaserScan()                          # Variable to access parameters of the lidar.
         self.mapOrigin = MapMetaData()                    # Stores meta data about the SLAM map.
@@ -92,12 +97,17 @@ class Pathfinding_Node:
 
     # This method will update the position of the robot relative to odometry. 
     def updateRobotPosition(self, data):
-        self.botPosition = data.pose.pose.position
+        self.botPosition.pose = data.pose.pose
+        self.botPosition.header.frame_id = 'odometry'
 
     # This method will update the map data when new data is available. This methods grabs every paramater
     # from the generated map.
     def updateMap(self, data):
         self.map = data
+
+    # Update static frame information for robot's base_link.
+    def staticUpdate(self, data):
+        self.baseLink = data.transforms[3]
 
     # This method will call the meta data from the map.
     def getMapOrigin(self, data):
@@ -132,8 +142,18 @@ class Pathfinding_Node:
 
 
         def getRoboMapPosition():
-            transform = self.tfBuffer.lookup_transform('map', 'odom', rospy.Time())
-            return tf2_geometry_msgs.do_transform_pose(self.botPosition, transform)     
+            transform = None
+            try:
+                print(self.baseLink.header.frame_id)
+                print(self.map.header.frame_id)
+                transform = self.tfBuffer.lookup_transform(self.map.header.frame_id, self.baseLink.header.frame_id, rospy.Time(), rospy.Duration(1.0))
+                print(transform)
+            except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, ):
+                rospy.sleep(0.1)
+
+            if transform is not None:
+                test = tf2_geometry_msgs.do_transform_pose(self.botPosition, transform)
+                print(test.pose)   
 
         def publishWaypoints():
             index = 1
@@ -144,7 +164,7 @@ class Pathfinding_Node:
             waypointList.waypoint4 = self.waypoints.get(4)
             self.info_publisher.publish(waypointList)
 
-        print(getRoboMapPosition())
+        getRoboMapPosition()
         
 
 if __name__ == '__main__':
