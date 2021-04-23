@@ -32,7 +32,7 @@
 # Package imports.
 import tf2_ros
 import roslib
-import numpy;
+import numpy as np;
 import rospy
 import tf2_geometry_msgs
 roslib.load_manifest('rospy')
@@ -42,7 +42,7 @@ from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point, Transform
 from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
 from sensor_msgs.msg import Imu, LaserScan
 from localizer_dwm1001.msg import Tag
-from std_msgs.msg import String, Float64
+from std_msgs.msg import String, Float64, Int8
 from camp_pathfinding.msg import Waypoints
 from tf2_msgs.msg import TFMessage
 
@@ -57,22 +57,17 @@ class Pathfinding_Node:
         self.tfBuffer = tf2_ros.Buffer()
         self.transformListener = tf2_ros.TransformListener(self.tfBuffer)
 
-        # Subscribe to important nodes.
-        rospy.Subscriber('/map', OccupancyGrid, self.updateMap)          # Subscribe to map.
+        # Subscribe to map metadata.
+        rospy.Subscriber('/map_metadata', MapMetaData, self.updateMapDimensions)
 
-        # Subscribed to map meta data node. Could provide useful information.
-        rospy.Subscriber('/map_metadata', MapMetaData, self.getMapOrigin)       # Subscribe to map meta data. 
-        
-        # Subscribe to robot odometry.
-        rospy.Subscriber('/odom', Odometry, self.updateRobotPosition)    # Subscribe to odometry.
+        # Subscribe to map.
+        rospy.Subscriber('/map', OccupancyGrid, self.updateMap)    
 
         # Subscribe to robot imu.
-        rospy.Subscriber('/imu', Imu, self.imuUpdate)    # Subscribe to odometry.
+        rospy.Subscriber('/imu', Imu, self.imuUpdate)   
         
         # Subscribe to LiDAR.
-        rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)       # Subscribe to lidar.
-
-        rospy.Subscriber('/tf_static', TFMessage, self.staticUpdate)  # Subscribe to static transform frames.
+        rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)
 
         # This will publish the computed waypoint information.
         self.info_publisher = rospy.Publisher('waypointList', Waypoints, queue_size = 10)
@@ -88,8 +83,9 @@ class Pathfinding_Node:
                           3 : Point(0, 0, 0),
                           4 : Point(0, 0, 0)}
 
-        self.botPosition = PoseStamped()                       # Variable for robot position.
-        self.map = OccupancyGrid()                        # Variable for map storge. 
+        self.mapActual = OccupancyGrid()
+        self.mapData = np.array([0])                             # Variable for map storge. 
+        self.mapDimensions = MapMetaData()                # Variable for map dimensions.
         self.lidar = LaserScan()                          # Variable to access parameters of the lidar.
         self.mapOrigin = MapMetaData()                    # Stores meta data about the SLAM map.
         self.imu = Imu()
@@ -102,22 +98,19 @@ class Pathfinding_Node:
     # Subscription update methods.
     #--------------------------------------------------------------------------------------------------------------
 
-    # This method will update the position of the robot relative to odometry. 
-    def updateRobotPosition(self, data):
-        self.botPosition.pose = data.pose.pose
-        self.botPosition.header.frame_id = 'imu_link'
+    # Update Map Metadata for map dimensions. It is unlikely that the map dimensions will change.
+    def updateMapDimensions(self, data):
+        self.mapDimensions = data
 
     # This method will update the map data when new data is available. This methods grabs every paramater
     # from the generated map.
     def updateMap(self, data):
-        self.map = data
+        self.mapActual = data
+        self.mapData = np.array(data.data).reshape((self.mapActual.info.height, self.mapActual.info.width)) # ** This might not be necessary.
 
+    # Update IMU data.
     def imuUpdate(self, data):
         self.imu = data
-
-    # This method will call the meta data from the map.
-    def getMapOrigin(self, data):
-        self.mapOrigin = data
 
     # This method will update lidar data when new data will be available. This method grabs every parameter 
     # from the lidar node.
@@ -139,25 +132,25 @@ class Pathfinding_Node:
         def createNewWaypoint():
             print("This is temporary!")
 
-
+        # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
         def getRoboMapPosition():
             # Create a stamped transform.
             transform = TransformStamped()
             try:
                 # Attempt to get the transform. Since the origin of the map is (0, 0), the transform will equal the translational
                 # position of the robot.
-                transform = self.tfBuffer.lookup_transform(self.map.header.frame_id, self.imu.header.frame_id, rospy.Time(), rospy.Duration(1.0))
+                transform = self.tfBuffer.lookup_transform(self.mapActual.header.frame_id, self.imu.header.frame_id, rospy.Time(), rospy.Duration(1.0))
             except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, tf2_ros.InvalidArgumentException):
                 # Catch errors and try again.
                 rospy.sleep(0.1)
 
-            print(transform.transform.translation) # Print for debug.
+            #print(transform.transform.translation) # Print for debug.
             return transform.transform.translation
 
-
+        # Method for obtaining the robot's position as a matrix position in the SLAM-generated map.
         def getMatrixPosition():
-            x_map_offset = 10 # X origin of map object is -10. So, add 10 to robot X position.
-            y_map_offset = 10 # Y origin of map object is -10. So, add 10 to robot Y position.
+            x_map_offset = -1 * self.mapActual.info.origin.position.x # X origin of map object is -10. So, add 10 to robot X position.
+            y_map_offset = -1 * self.mapActual.info.origin.position.y # Y origin of map object is -10. So, add 10 to robot Y position.
             
             # Get the robot position relative to the map
             robo_position = getRoboMapPosition()
@@ -167,13 +160,9 @@ class Pathfinding_Node:
                                   y_map_offset + robo_position.y]
 
             # Convert to matrix position. Used for map data traversing.
-            position_in_units = numpy.divide(position_in_meters, 0.05)
+            position_in_units = np.divide(position_in_meters, 0.05)
             position_in_units = [int(round(num, 0)) for num in position_in_units]
 
-            print("Position in meters:") # Print for debug.
-            print(position_in_meters)
-            print("\nPosition in units:") # Print for debug.
-            print(position_in_units)
             return position_in_units
 
         # Method for publishing waypoints to RQT. 
@@ -185,8 +174,17 @@ class Pathfinding_Node:
             waypointList.waypoint4 = self.waypoints.get(4)
             self.info_publisher.publish(waypointList)
 
-        getMatrixPosition()
+        def calculateEntropyData(x, y):
+            print("This is temporary")
         
+        #**********
+        # DEBUG
+        #**********
+        print(getRoboMapPosition())
+        print(getMatrixPosition())
+        print(len(self.mapActual.data))
+        if len(self.mapActual.data) != 0:
+            print(self.mapActual.data[313+ (self.mapActual.info.width * 163)])
 
 if __name__ == '__main__':
     path = Pathfinding_Node()
