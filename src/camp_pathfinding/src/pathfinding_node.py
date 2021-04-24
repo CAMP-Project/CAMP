@@ -83,6 +83,8 @@ class Pathfinding_Node:
                           3 : Point(0, 0, 0),
                           4 : Point(0, 0, 0)}
 
+        self.waypoint2publish = self.waypoints.get(1)
+
         self.mapActual = OccupancyGrid()
         self.mapData = np.array([0])                             # Variable for map storge. 
         self.mapDimensions = MapMetaData()                # Variable for map dimensions.
@@ -91,8 +93,6 @@ class Pathfinding_Node:
         self.imu = Imu()
 
         self.obstacleDetect = False                       # Indicates whether an object is blocking the path of the robot.
-        self.entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0] # This will hold on to entropy data to determine where to put a new waypoint.
-
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -120,12 +120,7 @@ class Pathfinding_Node:
     #--------------------------------------------------------------------------------------------------------------
     # Main Functionality of the Pathfinding algorithm
     #--------------------------------------------------------------------------------------------------------------
-    def main(self):
-
-        # This method will reset the waypoint list.
-        def resetWaypoints():
-            for point in self.waypoints.keys():
-                self.waypoints[point] = [0, 0]
+    def main(self):        
     
         # This method will create a new waypoint once the robot is within a certain distance
         # to waypoint 1.
@@ -174,17 +169,101 @@ class Pathfinding_Node:
             waypointList.waypoint4 = self.waypoints.get(4)
             self.info_publisher.publish(waypointList)
 
-        def calculateEntropyData(x, y):
-            print("This is temporary")
+        # This method resets the waypoints in the event of an obstacle preventing the traversal
+        # to waypoint 1 or if all paths fail around waypoint 3.
+        def resetWaypoints():
+            # Get position of robot as a matrix value in the map.
+            x_pos = getMatrixPosition()[0]
+            y_pos = getMatrixPosition()[1]
+            
+            # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
+            entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
+            N = self.mapActual.info.height
+
+            # Calculate the possible waypoint paths to take based on whichever direction is calculated.
+            waypointMap = {0 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
+                                [y_pos - 4, y_pos - 8, y_pos - 12, y_pos - 16]],
+                           1 : [[x_pos, x_pos, x_pos, x_pos],
+                                [y_pos - 4, y_pos - 8, y_pos - 12, y_pos - 16]],
+                           2 : [[x_pos + 4, x_pos + 8, x_pos + 12, x_pos + 16],
+                                [y_pos - 4, y_pos - 8, y_pos - 12, y_pos - 16]],
+                           3 : [[x_pos + 4, x_pos + 8, x_pos + 12, x_pos + 16],
+                                [y_pos, y_pos, y_pos, y_pos]],
+                           4 : [[x_pos + 4, x_pos + 8, x_pos + 12, x_pos + 16],
+                                [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
+                           5 : [[x_pos, x_pos, x_pos, x_pos],
+                                [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
+                           6 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
+                                [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
+                           7 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
+                                [y_pos, y_pos, y_pos, y_pos]]}                          
+            
+            # Calculate entropy sums.
+            for k in range(1, 20):
+                # Check down-left.
+                if N > (y_pos - k) > 0 & N > (x_pos - k) > 0:
+                    entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
+                else:
+                    entropyDirections[0] = entropyDirections[0] + 20
+                
+                # Check down.
+                if N > (y_pos - k) > 0:
+                    entropyDirections[1] = entropyDirections[1] + map(x_pos, y_pos - k)
+                else:
+                    entropyDirections[1] = entropyDirections[1] + 20
+
+                # Check down-right.
+                if N > (y_pos - k) > 0 & N > (x_pos + k) > 0:
+                    entropyDirections[2] = entropyDirections[2] + map(x_pos + k, y_pos - k)
+                else:
+                    entropyDirections[2] = entropyDirections[2] + 20
+
+                # Check right.
+                if N > (x_pos + k) > 0:
+                    entropyDirections[3] = entropyDirections[3] + map(x_pos + k, y_pos)
+                else:
+                    entropyDirections[3] = entropyDirections[3] + 20
+
+                # Check up-right.
+                if N > (y_pos + k) > 0 & N > (x_pos + k) > 0:
+                    entropyDirections[4] = entropyDirections[4] + map(x_pos + k, y_pos + k)
+                else:
+                    entropyDirections[4] = entropyDirections[4] + 20
+
+                # Check up.
+                if N > (y_pos + k) > 0:
+                    entropyDirections[5] = entropyDirections[5] + map(x_pos, y_pos + k)
+                else:
+                    entropyDirections[5] = entropyDirections[5] + 20
+
+                # Check up-left.
+                if N > (y_pos + k) > 0 & N > (x_pos - k) > 0:
+                    entropyDirections[6] = entropyDirections[6] + map(x_pos - k, y_pos + k)
+                else:
+                    entropyDirections[6] = entropyDirections[6] + 20
+
+                # Check left.
+                if N > (x_pos - k) > 0:
+                    entropyDirections[7] = entropyDirections[7] + map(x_pos - k, y_pos)
+                else:
+                    entropyDirections[7] = entropyDirections[7] + 20
+                
+            # Find the direction of minimum entropy.
+            direction = entropyDirections.index(min(entropyDirections))
+
+            # Select the path from the waypointMap above based on the calculated direction.
+            path = waypointMap.get(direction) # Print for debug.
+
+            # Establish path as a series of new waypoints.
+            for i in range(4):
+                self.waypoints[i + 1] = Point(path[0][i], path[1][i], 1)
         
-        #**********
-        # DEBUG
-        #**********
-        print(getRoboMapPosition())
-        print(getMatrixPosition())
-        print(len(self.mapActual.data))
-        if len(self.mapActual.data) != 0:
-            print(self.mapActual.data[313+ (self.mapActual.info.width * 163)])
+        # This method calculates and returns the entropy data at a given matrix coordinate.
+        def map(x, y):
+            p = self.mapActual.data[x + (self.mapActual.info.width * y)]
+            return ((-1 * p * np.log(p)) - ((1 - p) * np.log(1 - p)))
+        
+        resetWaypoints()
 
 if __name__ == '__main__':
     path = Pathfinding_Node()
