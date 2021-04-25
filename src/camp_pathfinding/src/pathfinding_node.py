@@ -30,6 +30,7 @@
 # 3b. If an object is detected, reset the waypoint list. 
 
 # Package imports.
+import math
 import tf2_ros
 import roslib
 import numpy as np;
@@ -122,12 +123,7 @@ class Pathfinding_Node:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):        
     
-        # This method will create a new waypoint once the robot is within a certain distance
-        # to waypoint 1.
-        def createNewWaypoint():
-            print("This is temporary!")
-
-        # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
+            # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
         def getRoboMapPosition():
             # Create a stamped transform.
             transform = TransformStamped()
@@ -196,72 +192,117 @@ class Pathfinding_Node:
                            6 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
                                 [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
                            7 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
-                                [y_pos, y_pos, y_pos, y_pos]]}                          
-            
-            # Calculate entropy sums.
-            for k in range(1, 20):
-                # Check down-left.
-                if N > (y_pos - k) > 0 & N > (x_pos - k) > 0:
-                    entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
-                else:
-                    entropyDirections[0] = entropyDirections[0] + 20
-                
-                # Check down.
-                if N > (y_pos - k) > 0:
-                    entropyDirections[1] = entropyDirections[1] + map(x_pos, y_pos - k)
-                else:
-                    entropyDirections[1] = entropyDirections[1] + 20
+                                [y_pos, y_pos, y_pos, y_pos]]}        
 
-                # Check down-right.
-                if N > (y_pos - k) > 0 & N > (x_pos + k) > 0:
-                    entropyDirections[2] = entropyDirections[2] + map(x_pos + k, y_pos - k)
-                else:
-                    entropyDirections[2] = entropyDirections[2] + 20
+            if x_pos > 0 and y_pos > 0:
+                # Calculate entropy sums.
+                for k in range(1, 20):
+                    # Check down-left.
+                    if (y_pos - k) > 0 and (x_pos - k) > 0:
+                        #print("I am down-left")
+                        entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
+                    else:
+                        entropyDirections[0] = entropyDirections[0] + 20
+                    
+                    # Check down.
+                    if (y_pos - k) > 0:
+                        #print("I am down")
+                        entropyDirections[1] = entropyDirections[1] + map(x_pos, y_pos - k)
+                    else:
+                        entropyDirections[1] = entropyDirections[1] + 20
 
-                # Check right.
-                if N > (x_pos + k) > 0:
-                    entropyDirections[3] = entropyDirections[3] + map(x_pos + k, y_pos)
-                else:
-                    entropyDirections[3] = entropyDirections[3] + 20
+                    # Check down-right.
+                    if (y_pos - k) > 0 and (x_pos + k) > 0:
+                        #print("I am down-right")
+                        entropyDirections[2] = entropyDirections[2] + map(x_pos + k, y_pos - k)
+                    else:
+                        entropyDirections[2] = entropyDirections[2] + 20
 
-                # Check up-right.
-                if N > (y_pos + k) > 0 & N > (x_pos + k) > 0:
-                    entropyDirections[4] = entropyDirections[4] + map(x_pos + k, y_pos + k)
-                else:
-                    entropyDirections[4] = entropyDirections[4] + 20
+                    # Check right.
+                    if (x_pos + k) > 0:
+                        #print("I am right")
+                        entropyDirections[3] = entropyDirections[3] + map(x_pos + k, y_pos)
+                    else:
+                        entropyDirections[3] = entropyDirections[3] + 20
 
-                # Check up.
-                if N > (y_pos + k) > 0:
-                    entropyDirections[5] = entropyDirections[5] + map(x_pos, y_pos + k)
-                else:
-                    entropyDirections[5] = entropyDirections[5] + 20
+                    # Check up-right.
+                    if (y_pos + k) > 0 and (x_pos + k) > 0:
+                        #print("I am up-right")
+                        entropyDirections[4] = entropyDirections[4] + map(x_pos + k, y_pos + k)
+                    else:
+                        entropyDirections[4] = entropyDirections[4] + 20
 
-                # Check up-left.
-                if N > (y_pos + k) > 0 & N > (x_pos - k) > 0:
-                    entropyDirections[6] = entropyDirections[6] + map(x_pos - k, y_pos + k)
-                else:
-                    entropyDirections[6] = entropyDirections[6] + 20
+                    # Check up.
+                    if (y_pos + k) > 0:
+                        #print("I am up")
+                        entropyDirections[5] = entropyDirections[5] + map(x_pos, y_pos + k)
+                    else:
+                        entropyDirections[5] = entropyDirections[5] + 20
 
-                # Check left.
-                if N > (x_pos - k) > 0:
-                    entropyDirections[7] = entropyDirections[7] + map(x_pos - k, y_pos)
-                else:
-                    entropyDirections[7] = entropyDirections[7] + 20
+                    # Check up-left.
+                    if (y_pos + k) > 0 and (x_pos - k) > 0:
+                        #print("I am up-left")
+                        entropyDirections[6] = entropyDirections[6] + map(x_pos - k, y_pos + k)
+                    else:
+                        entropyDirections[6] = entropyDirections[6] + 20
+
+                    # Check left.
+                    if (x_pos - k) > 0:
+                        #print("I am left")
+                        entropyDirections[7] = entropyDirections[7] + map(x_pos - k, y_pos)
+                    else:
+                        entropyDirections[7] = entropyDirections[7] + 20
                 
             # Find the direction of minimum entropy.
             direction = entropyDirections.index(min(entropyDirections))
 
+            print(direction)
+            print(entropyDirections)
+
             # Select the path from the waypointMap above based on the calculated direction.
-            path = waypointMap.get(direction) # Print for debug.
+            path = waypointMap.get(direction)
 
             # Establish path as a series of new waypoints.
             for i in range(4):
                 self.waypoints[i + 1] = Point(path[0][i], path[1][i], 1)
+
+            for point in self.waypoints:
+                print(point)
+                print(self.waypoints.get(point))
+
+        # This method will create a new waypoint once the robot is within a certain distance
+        # to waypoint 1.
+        def createNewWaypoint():
+            print("This is temporary!")
         
         # This method calculates and returns the entropy data at a given matrix coordinate.
         def map(x, y):
-            p = self.mapActual.data[x + (self.mapActual.info.width * y)]
-            return ((-1 * p * np.log(p)) - ((1 - p) * np.log(1 - p)))
+            return self.mapActual.data[x + (self.mapActual.info.width * y)]
+
+        # This method checks for obstacles between the robot and waypoint 1. Taken from camp_goto_node.
+        def obstacleCheck():
+            # Instantiate a closest object integer.
+            closestFrontObject = 0
+
+            # Obtain lidar distance data.
+            ranges = self.lidar.ranges
+            if len(ranges) == 360:
+                if ranges[0] != 0:
+                    closestFrontObject = ranges[0]
+                else:
+                    closestFrontObject = 500
+                for i in range(27):
+                    if ranges[i] < closestFrontObject and ranges[i] != 0:
+                        closestFrontObject = self.lidar.ranges[i]
+                    if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
+                        closestFrontObject = ranges[360 - i]
+                
+                if closestFrontObject < 0.15:
+                    return True
+                else:
+                    return False
+            else:
+                return True
         
         resetWaypoints()
 
