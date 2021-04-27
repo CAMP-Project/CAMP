@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   localizer_dwm1001
+  tf2
+  tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +113,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
  LIBRARIES camp_goto
- CATKIN_DEPENDS geometry_msgs message_generation roscpp rospy sensor_msgs std_msgs 
+ CATKIN_DEPENDS geometry_msgs message_generation roscpp rospy sensor_msgs std_msgs tf2 tf2_ros
 #  DEPENDS system_lib
 )
 
@@ -142,6 +144,7 @@ include_directories(
 add_executable(${PROJECT_NAME}_node src/camp_goto_node.cpp)
 add_executable(${PROJECT_NAME}_talker src/camp_goto_talker.cpp)
 add_executable(${PROJECT_NAME}_calibration src/camp_goto_calibration.cpp)
+add_executable(${PROJECT_NAME}_calibration_tf src/camp_goto_calibration_tf.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -150,12 +153,14 @@ add_executable(${PROJECT_NAME}_calibration src/camp_goto_calibration.cpp)
 set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 set_target_properties(${PROJECT_NAME}_talker PROPERTIES OUTPUT_NAME talker PREFIX "")
 set_target_properties(${PROJECT_NAME}_calibration PROPERTIES OUTPUT_NAME calibration PREFIX "")
+set_target_properties(${PROJECT_NAME}_calibration_tf PROPERTIES OUTPUT_NAME tf PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_talker ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_calibration ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_calibration_tf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
@@ -165,6 +170,9 @@ target_link_libraries(${PROJECT_NAME}_talker
   ${catkin_LIBRARIES}
 )
 target_link_libraries(${PROJECT_NAME}_calibration
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(${PROJECT_NAME}_calibration_tf
   ${catkin_LIBRARIES}
 )
 
