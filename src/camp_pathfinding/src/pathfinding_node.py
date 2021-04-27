@@ -71,7 +71,7 @@ class Pathfinding_Node:
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)
 
         # This will publish the computed waypoint information.
-        self.info_publisher = rospy.Publisher('waypointList', Waypoints, queue_size = 10)
+        self.info_publisher = rospy.Publisher('current_waypoint', Point, queue_size = 10)
 
         # Create a waypoint hashmap. Stores coordinates of waypoints.
         # [x_coordinate, y_doordinate, relative_frame]
@@ -79,12 +79,10 @@ class Pathfinding_Node:
         # 0: Stop
         # 1: Odometry
         # 2: Decawave
-        self.waypoints = {1 : Point(0, 0, 0),
-                          2 : Point(0, 0, 0),
-                          3 : Point(0, 0, 0),
-                          4 : Point(0, 0, 0)}
-
-        self.waypoint2publish = self.waypoints.get(1)
+        self.waypoints = {1 : Point(200, 200, 1),
+                          2 : Point(203, 203, 1),
+                          3 : Point(206, 206, 1),
+                          4 : Point(209, 209, 1)}
 
         self.mapActual = OccupancyGrid()
         self.mapData = np.array([0])                             # Variable for map storge. 
@@ -138,6 +136,7 @@ class Pathfinding_Node:
             #print(transform.transform.translation) # Print for debug.
             return transform.transform.translation
 
+
         # Method for obtaining the robot's position as a matrix position in the SLAM-generated map.
         def getMatrixPosition():
             x_map_offset = -1 * self.mapActual.info.origin.position.x # X origin of map object is -10. So, add 10 to robot X position.
@@ -156,14 +155,15 @@ class Pathfinding_Node:
 
             return position_in_units
 
+
         # Method for publishing waypoints to RQT. 
         def publishWaypoints():
-            waypointList = Waypoints()
-            waypointList.waypoint1 = self.waypoints.get(1)
-            waypointList.waypoint2 = self.waypoints.get(2)
-            waypointList.waypoint3 = self.waypoints.get(3)
-            waypointList.waypoint4 = self.waypoints.get(4)
-            self.info_publisher.publish(waypointList)
+            waypoint = self.waypoints.get(1)
+            x = (0.05 * waypoint.x) - (-1 * self.mapActual.info.origin.position.x)
+            y = (0.05 * waypoint.y) - (-1 * self.mapActual.info.origin.position.y)
+            result = Point(x, y, waypoint.z)
+            self.info_publisher.publish(result)
+
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
         # to waypoint 1 or if all paths fail around waypoint 3.
@@ -256,9 +256,6 @@ class Pathfinding_Node:
             # Find the direction of minimum entropy.
             direction = entropyDirections.index(min(entropyDirections))
 
-            print(direction)
-            print(entropyDirections)
-
             # Select the path from the waypointMap above based on the calculated direction.
             path = waypointMap.get(direction)
 
@@ -266,18 +263,83 @@ class Pathfinding_Node:
             for i in range(4):
                 self.waypoints[i + 1] = Point(path[0][i], path[1][i], 1)
 
-            for point in self.waypoints:
-                print(point)
-                print(self.waypoints.get(point))
 
         # This method will create a new waypoint once the robot is within a certain distance
         # to waypoint 1.
         def createNewWaypoint():
-            print("This is temporary!")
-        
+            # Get the position of the third waypoint.            
+            point_x = self.waypoints.get(4).x
+            point_y = self.waypoints.get(4).y
+
+            # Shift the waypoint list.
+            for i in range(4):
+                self.waypoints[i + 1] = self.waypoints.get(i + 2)
+
+            # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
+            entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
+            
+            # The amount of squares to advance.
+            d = 10
+
+            # Traversal movements in each direction. Premade depending on the direction to be calculated.
+            advancementMap = {
+                0 : [-d, -d],
+                1 : [0, -d],
+                2 : [d, -d],
+                3 : [d, 0],
+                4 : [d, d],
+                5 : [0, d],
+                6 : [-d, d],
+                7 : [-d, 0] 
+            }
+
+            # Calculate entropy to the upper right of waypoint 3
+            entropyDirections[0] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 15, point_y - 5)
+            entropyDirections[1] = grabEntropySquare(point_x - 5, point_x + 5, point_y - 15, point_y - 5)
+            entropyDirections[2] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 15, point_y - 5)
+            entropyDirections[3] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 5, point_y + 5)
+            entropyDirections[4] = grabEntropySquare(point_x + 5, point_x + 15, point_y + 5, point_y + 15)
+            entropyDirections[5] = grabEntropySquare(point_x - 5, point_x + 5, point_y + 5, point_y + 15)
+            entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y + 5, point_y + 15)
+            entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5)
+
+            # Find the direction to place a new waypoint.
+            direction = entropyDirections.index(max(entropyDirections))              
+
+            # Get the number of squares to increase in either direction depending on the calculated direction.
+            differential = advancementMap.get(direction)
+
+            self.waypoints[4] = Point(point_x + differential[0], point_y + differential[1], 1)
+
+
+
+        def grabEntropySquare(range_x_1, range_x_2, range_y_1, range_y_2):
+            result = 0
+            for i in range(range_x_1, range_x_2):
+                for j in range(range_y_1, range_y_2):
+                    result = result + entropy(i, j)
+            return result
+                
+
         # This method calculates and returns the entropy data at a given matrix coordinate.
         def map(x, y):
-            return self.mapActual.data[x + (self.mapActual.info.width * y)]
+            if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
+                return 0
+            else:
+                return self.mapActual.data[x + (self.mapActual.info.width * y)]
+
+        def entropy(x, y):
+            # First grab probability. Divide by 101 such that 100 becomes 0.99.
+            print("x" + str(x))
+            print("y" + str(y))
+            p = self.mapActual.data[x + (self.mapActual.info.width * y)] / 101 
+            
+            # Return Entropy value.
+            if p <= 0:
+                return 0
+            else:
+                return ((-p * math.log(p, 10)) - ((1 - p) * math.log(1 - p)))
+
 
         # This method checks for obstacles between the robot and waypoint 1. Taken from camp_goto_node.
         def obstacleCheck():
@@ -291,7 +353,7 @@ class Pathfinding_Node:
                     closestFrontObject = ranges[0]
                 else:
                     closestFrontObject = 500
-                for i in range(27):
+                for i in range(1, 27):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
@@ -304,7 +366,14 @@ class Pathfinding_Node:
             else:
                 return True
         
-        resetWaypoints()
+        if obstacleCheck():
+            resetWaypoints()
+        else:
+            dx = getMatrixPosition()[0] - self.waypoints.get(1).x
+            dy = getMatrixPosition()[1] - self.waypoints.get(1).y
+            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 2:
+                createNewWaypoint()
+        publishWaypoints()
 
 if __name__ == '__main__':
     path = Pathfinding_Node()
