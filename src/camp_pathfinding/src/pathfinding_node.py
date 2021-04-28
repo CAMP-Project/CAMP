@@ -147,9 +147,10 @@ class Pathfinding_Node:
         # Method for publishing waypoints to RQT. 
         def publishWaypoints():
             waypoint = self.waypoints.get(1)
-            x = 0.05 * (waypoint.x + self.mapActual.info.origin.position.x)
-            y = 0.05 * (waypoint.y + self.mapActual.info.origin.position.y)
+            x = (0.05 * waypoint.x) + self.mapActual.info.origin.position.x
+            y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
             result = Point(x, y, waypoint.z)
+            print(result)
             self.info_publisher.publish(result)
 
 
@@ -183,6 +184,7 @@ class Pathfinding_Node:
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
             if x_pos > 0 and y_pos > 0:
+                print("I AM RESETTING THE POINTS")
                 # Calculate entropy sums.
                 for k in range(1, 20):
                     # Check down-left.
@@ -337,7 +339,7 @@ class Pathfinding_Node:
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
-                if closestFrontObject < 0.3:
+                if closestFrontObject < 1.5:
                     return True
                 else:
                     return False
