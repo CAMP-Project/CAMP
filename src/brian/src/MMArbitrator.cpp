@@ -27,15 +27,20 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
 void MMArbitrator::sync(ros::NodeHandle n)
 {
     ros::spinOnce();
+    
+    // If we don't know who we are, no point in going forward
+    if (this->_current_name.empty())
+        return;
 
     if (this->_mm_entry_point.call(this->_fkie_service))
     {
         int s = this->_fkie_service.response.masters.size();
         // If the number of hosts is the same between runs, no need to run everything again
-        if (this->_available.size() == s)
+        if (this->_available.size() == s-1)
         {
+            debug_print("Sync");
             // Advertise the current robot's map and odometry under a different name
-            ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), _current_name.size());
+            // ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), _current_name.size());
             if (this->_current_name.size() > 0 && _map_pub.getTopic().empty())
             {
                 ROS_INFO("Setting up my publishers");
@@ -54,13 +59,14 @@ void MMArbitrator::sync(ros::NodeHandle n)
             }
             return;
         }
-        
+        // Who am i?
+        debug_print("I AM: "+_current_name);
         ROS_INFO("Response Size: %d", s);
         for (int i = 0; i < s; i++)
         {
             // Name of "new" host
             std::string new_host = this->_fkie_service.response.masters.at(i).name;
-
+            debug_print("Checkhost: "+new_host);
             // Remove illegal characters from new host name
             new_host.erase(std::remove_if(new_host.begin(), new_host.end(),
                             [](const char c)
@@ -69,6 +75,13 @@ void MMArbitrator::sync(ros::NodeHandle n)
             //Check is the new host name is number and convert to something better
             if (is_number(new_host))
                 new_host = this->shift_num_to_char(new_host);
+
+            // No need to subscribe to our own nodes
+            if (new_host.compare(this->_current_name) == 0)
+            {
+                debug_print("BAILING: "+new_host);
+                continue;
+            }
 
             // Check to see if the host acquired is already part of known hosts
             if(std::find(this->_available.begin(), this->_available.end(), new_host ) == this->_available.end())
@@ -95,6 +108,14 @@ void MMArbitrator::sync(ros::NodeHandle n)
     else
         ROS_INFO("Error calling master_discovery/list_masters service");
 
+    #ifdef DEBUG
+        std::string hosts;
+        for (int i = 0; i < this->_available.size(); i++)
+            hosts.append(_available.at(i)+" ");
+        
+        ROS_INFO("Available hosts: %s", hosts.c_str());
+                
+    #endif
     ROS_INFO("End of initial sync");
 }
 
@@ -201,4 +222,11 @@ std::string MMArbitrator::shift_num_to_char(std::string s)
         s[i] +=  17;
 
     return s;    
+}
+
+void MMArbitrator::debug_print(std::string s)
+{
+    #ifdef DEBUG
+        ROS_INFO("DEBUG: %s", s.c_str());
+    #endif
 }

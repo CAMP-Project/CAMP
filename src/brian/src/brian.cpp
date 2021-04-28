@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 
         mma.sync(n);
 
-        ROS_INFO("sync success");
+        // ROS_INFO("sync success");
 
         ros::spinOnce();
         r.sleep();

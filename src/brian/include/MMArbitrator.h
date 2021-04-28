@@ -28,6 +28,9 @@
 #include "fkie_multimaster_msgs/DiscoverMasters.h"
 #include "fkie_multimaster_msgs/MasterState.h"
 
+// Preprocessor Definitions
+#define DEBUG 1
+
 /**
  * @file MMArbitator.h
  * @brief Arbitrator object to publish and subsribe to new data available on the network
@@ -110,6 +113,8 @@ private:
     bool is_number(std::string);
 
     std::string shift_num_to_char(std::string);
+
+    void debug_print(std::string);
 };
 
 #endif // MM_ARBITRATOR_H
