@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <!--Launch Turtlebot3 SLAM without RVIZ-->
+    <include file="$(find turtlebot3_slam)/launch/turtlebot3_slam.launch">
+        <arg name="open_rviz" value="false"/>
+    </include>
+
+    <!--Launch the multimaster discovery node-->
+    <!--include file="$(find fkie_master_discovery)/launch/master_discovery.launch" /-->
+
+
+</launch>
