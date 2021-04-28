@@ -58,9 +58,6 @@ class Pathfinding_Node:
         self.tfBuffer = tf2_ros.Buffer()
         self.transformListener = tf2_ros.TransformListener(self.tfBuffer)
 
-        # Subscribe to map metadata.
-        rospy.Subscriber('/map_metadata', MapMetaData, self.updateMapDimensions)
-
         # Subscribe to map.
         rospy.Subscriber('/map', OccupancyGrid, self.updateMap)    
 
@@ -84,11 +81,8 @@ class Pathfinding_Node:
                           3 : Point(206, 206, 1),
                           4 : Point(209, 209, 1)}
 
-        self.mapActual = OccupancyGrid()
-        self.mapData = np.array([0])                             # Variable for map storge. 
-        self.mapDimensions = MapMetaData()                # Variable for map dimensions.
+        self.mapActual = OccupancyGrid() 
         self.lidar = LaserScan()                          # Variable to access parameters of the lidar.
-        self.mapOrigin = MapMetaData()                    # Stores meta data about the SLAM map.
         self.imu = Imu()
 
         self.obstacleDetect = False                       # Indicates whether an object is blocking the path of the robot.
@@ -97,15 +91,10 @@ class Pathfinding_Node:
     # Subscription update methods.
     #--------------------------------------------------------------------------------------------------------------
 
-    # Update Map Metadata for map dimensions. It is unlikely that the map dimensions will change.
-    def updateMapDimensions(self, data):
-        self.mapDimensions = data
-
     # This method will update the map data when new data is available. This methods grabs every paramater
     # from the generated map.
     def updateMap(self, data):
         self.mapActual = data
-        self.mapData = np.array(data.data).reshape((self.mapActual.info.height, self.mapActual.info.width)) # ** This might not be necessary.
 
     # Update IMU data.
     def imuUpdate(self, data):
@@ -159,8 +148,8 @@ class Pathfinding_Node:
         # Method for publishing waypoints to RQT. 
         def publishWaypoints():
             waypoint = self.waypoints.get(1)
-            x = (0.05 * waypoint.x) - (-1 * self.mapActual.info.origin.position.x)
-            y = (0.05 * waypoint.y) - (-1 * self.mapActual.info.origin.position.y)
+            x = 0.05 * (waypoint.x + self.mapActual.info.origin.position.x)
+            y = 0.05 * (waypoint.y + self.mapActual.info.origin.position.y)
             result = Point(x, y, waypoint.z)
             self.info_publisher.publish(result)
 
