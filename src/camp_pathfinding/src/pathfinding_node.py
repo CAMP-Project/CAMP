@@ -68,7 +68,7 @@ class Pathfinding_Node:
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)
 
         # This will publish the computed waypoint information.
-        self.info_publisher = rospy.Publisher('current_waypoint', Point, queue_size = 10)
+        self.info_publisher = rospy.Publisher('go_pos', Point, queue_size = 10)
 
         # Create a waypoint hashmap. Stores coordinates of waypoints.
         # [x_coordinate, y_doordinate, relative_frame]
@@ -122,7 +122,6 @@ class Pathfinding_Node:
                 # Catch errors and try again.
                 rospy.sleep(0.1)
 
-            #print(transform.transform.translation) # Print for debug.
             return transform.transform.translation
 
 
@@ -188,56 +187,48 @@ class Pathfinding_Node:
                 for k in range(1, 20):
                     # Check down-left.
                     if (y_pos - k) > 0 and (x_pos - k) > 0:
-                        #print("I am down-left")
                         entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
                     else:
                         entropyDirections[0] = entropyDirections[0] + 20
                     
                     # Check down.
                     if (y_pos - k) > 0:
-                        #print("I am down")
                         entropyDirections[1] = entropyDirections[1] + map(x_pos, y_pos - k)
                     else:
                         entropyDirections[1] = entropyDirections[1] + 20
 
                     # Check down-right.
                     if (y_pos - k) > 0 and (x_pos + k) > 0:
-                        #print("I am down-right")
                         entropyDirections[2] = entropyDirections[2] + map(x_pos + k, y_pos - k)
                     else:
                         entropyDirections[2] = entropyDirections[2] + 20
 
                     # Check right.
                     if (x_pos + k) > 0:
-                        #print("I am right")
                         entropyDirections[3] = entropyDirections[3] + map(x_pos + k, y_pos)
                     else:
                         entropyDirections[3] = entropyDirections[3] + 20
 
                     # Check up-right.
                     if (y_pos + k) > 0 and (x_pos + k) > 0:
-                        #print("I am up-right")
                         entropyDirections[4] = entropyDirections[4] + map(x_pos + k, y_pos + k)
                     else:
                         entropyDirections[4] = entropyDirections[4] + 20
 
                     # Check up.
                     if (y_pos + k) > 0:
-                        #print("I am up")
                         entropyDirections[5] = entropyDirections[5] + map(x_pos, y_pos + k)
                     else:
                         entropyDirections[5] = entropyDirections[5] + 20
 
                     # Check up-left.
                     if (y_pos + k) > 0 and (x_pos - k) > 0:
-                        #print("I am up-left")
                         entropyDirections[6] = entropyDirections[6] + map(x_pos - k, y_pos + k)
                     else:
                         entropyDirections[6] = entropyDirections[6] + 20
 
                     # Check left.
                     if (x_pos - k) > 0:
-                        #print("I am left")
                         entropyDirections[7] = entropyDirections[7] + map(x_pos - k, y_pos)
                     else:
                         entropyDirections[7] = entropyDirections[7] + 20
@@ -319,8 +310,6 @@ class Pathfinding_Node:
 
         def entropy(x, y):
             # First grab probability. Divide by 101 such that 100 becomes 0.99.
-            print("x" + str(x))
-            print("y" + str(y))
             p = self.mapActual.data[x + (self.mapActual.info.width * y)] / 101 
             
             # Return Entropy value.
@@ -342,13 +331,13 @@ class Pathfinding_Node:
                     closestFrontObject = ranges[0]
                 else:
                     closestFrontObject = 500
-                for i in range(1, 27):
+                for i in range(1, 37):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
-                if closestFrontObject < 0.15:
+                if closestFrontObject < 0.3:
                     return True
                 else:
                     return False
@@ -357,11 +346,17 @@ class Pathfinding_Node:
         
         if obstacleCheck():
             resetWaypoints()
+            print("\nI have reset the waypoint list!")
         else:
             dx = getMatrixPosition()[0] - self.waypoints.get(1).x
             dy = getMatrixPosition()[1] - self.waypoints.get(1).y
             if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 2:
                 createNewWaypoint()
+                print("\nI am trying to go to: ")
+        for i in range(1, 5):
+            print("Point " + str(i) + ": ")
+            print(self.waypoints.get(i))
+
         publishWaypoints()
 
 if __name__ == '__main__':
