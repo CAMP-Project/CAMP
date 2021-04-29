@@ -115,6 +115,8 @@ private:
     std::string shift_num_to_char(std::string);
 
     void debug_print(std::string);
+
+    std::string check_host(std::string);
 };
 
 #endif // MM_ARBITRATOR_H

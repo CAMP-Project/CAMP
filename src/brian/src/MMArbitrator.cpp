@@ -59,6 +59,17 @@ void MMArbitrator::sync(ros::NodeHandle n)
             }
             return;
         }
+        // One of the other hosts disconnected
+        else if(this->_available.size() > s-1)
+        {
+            debug_print("Host Disconnected");
+            debug_print("Skipping this iteration");
+            for (int i = 0; i < s; i++)
+            {
+                
+            }
+            return;
+        }
         // Who am i?
         debug_print("I AM: "+_current_name);
         ROS_INFO("Response Size: %d", s);
@@ -66,15 +77,8 @@ void MMArbitrator::sync(ros::NodeHandle n)
         {
             // Name of "new" host
             std::string new_host = this->_fkie_service.response.masters.at(i).name;
-            debug_print("Checkhost: "+new_host);
-            // Remove illegal characters from new host name
-            new_host.erase(std::remove_if(new_host.begin(), new_host.end(),
-                            [](const char c)
-                            {return c=='.';}), new_host.end());
-
-            //Check is the new host name is number and convert to something better
-            if (is_number(new_host))
-                new_host = this->shift_num_to_char(new_host);
+            
+            new_host = check_host(new_host);
 
             // No need to subscribe to our own nodes
             if (new_host.compare(this->_current_name) == 0)
@@ -229,4 +233,19 @@ void MMArbitrator::debug_print(std::string s)
     #ifdef DEBUG
         ROS_INFO("DEBUG: %s", s.c_str());
     #endif
+}
+
+std::string MMArbitrator::check_host(std::string s)
+{
+    debug_print("Checkhost: "+s);
+    // Remove illegal characters from new host name
+    s.erase(std::remove_if(s.begin(), s.end(),
+                    [](const char c)
+                    {return c=='.';}), s.end());
+
+    //Check is the new host name is number and convert to something better
+    if (is_number(s))
+        s = this->shift_num_to_char(s);
+
+    return s;
 }
