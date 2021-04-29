@@ -39,7 +39,7 @@ import tf2_geometry_msgs
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point, TransformStamped, PoseStamped, Transform
+from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point, TransformStamped, PoseStamped, Transform, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
 from sensor_msgs.msg import Imu, LaserScan
 from localizer_dwm1001.msg import Tag
@@ -58,9 +58,6 @@ class Pathfinding_Node:
         self.tfBuffer = tf2_ros.Buffer()
         self.transformListener = tf2_ros.TransformListener(self.tfBuffer)
 
-        # Subscribe to map metadata.
-        rospy.Subscriber('/map_metadata', MapMetaData, self.updateMapDimensions)
-
         # Subscribe to map.
         rospy.Subscriber('/map', OccupancyGrid, self.updateMap)    
 
@@ -70,8 +67,13 @@ class Pathfinding_Node:
         # Subscribe to LiDAR.
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)
 
+        # Subscribe to odometry.
+        rospy.Subscriber('/odom', Odometry, self.updateOdom)
+
         # This will publish the computed waypoint information.
-        self.info_publisher = rospy.Publisher('current_waypoint', Point, queue_size = 10)
+        self.point_publisher = rospy.Publisher('go_pos', Point, queue_size = 10)
+
+        self.viz_publisher = rospy.Publisher('point_viz', PointStamped, queue_size = 10)
 
         # Create a waypoint hashmap. Stores coordinates of waypoints.
         # [x_coordinate, y_doordinate, relative_frame]
@@ -79,17 +81,15 @@ class Pathfinding_Node:
         # 0: Stop
         # 1: Odometry
         # 2: Decawave
-        self.waypoints = {1 : Point(200, 200, 1),
-                          2 : Point(203, 203, 1),
-                          3 : Point(206, 206, 1),
-                          4 : Point(209, 209, 1)}
+        self.waypoints = {1 : Point(203, 203, 1),
+                          2 : Point(206, 206, 1),
+                          3 : Point(209, 209, 1),
+                          4 : Point(212, 212, 1)}
 
-        self.mapActual = OccupancyGrid()
-        self.mapData = np.array([0])                             # Variable for map storge. 
-        self.mapDimensions = MapMetaData()                # Variable for map dimensions.
+        self.mapActual = OccupancyGrid() 
         self.lidar = LaserScan()                          # Variable to access parameters of the lidar.
-        self.mapOrigin = MapMetaData()                    # Stores meta data about the SLAM map.
         self.imu = Imu()
+        self.odom = Odometry()
 
         self.obstacleDetect = False                       # Indicates whether an object is blocking the path of the robot.
 
@@ -97,15 +97,10 @@ class Pathfinding_Node:
     # Subscription update methods.
     #--------------------------------------------------------------------------------------------------------------
 
-    # Update Map Metadata for map dimensions. It is unlikely that the map dimensions will change.
-    def updateMapDimensions(self, data):
-        self.mapDimensions = data
-
     # This method will update the map data when new data is available. This methods grabs every paramater
     # from the generated map.
     def updateMap(self, data):
         self.mapActual = data
-        self.mapData = np.array(data.data).reshape((self.mapActual.info.height, self.mapActual.info.width)) # ** This might not be necessary.
 
     # Update IMU data.
     def imuUpdate(self, data):
@@ -115,6 +110,10 @@ class Pathfinding_Node:
     # from the lidar node.
     def updateLidarScan(self, data):
         self.lidar = data
+
+    # This method will grab information from the robot's odometry.
+    def updateOdom(self, data):
+        self.odom = data
 
     #--------------------------------------------------------------------------------------------------------------
     # Main Functionality of the Pathfinding algorithm
@@ -133,8 +132,12 @@ class Pathfinding_Node:
                 # Catch errors and try again.
                 rospy.sleep(0.1)
 
-            #print(transform.transform.translation) # Print for debug.
-            return transform.transform.translation
+            #return transform.transform.translation
+            result = Vector3()
+            result.x = self.odom.pose.pose.position.x
+            result.y = self.odom.pose.pose.position.y
+            result.z = 1
+            return result
 
 
         # Method for obtaining the robot's position as a matrix position in the SLAM-generated map.
@@ -159,10 +162,17 @@ class Pathfinding_Node:
         # Method for publishing waypoints to RQT. 
         def publishWaypoints():
             waypoint = self.waypoints.get(1)
-            x = (0.05 * waypoint.x) - (-1 * self.mapActual.info.origin.position.x)
-            y = (0.05 * waypoint.y) - (-1 * self.mapActual.info.origin.position.y)
+            x = (0.05 * waypoint.x) + self.mapActual.info.origin.position.x
+            y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
             result = Point(x, y, waypoint.z)
-            self.info_publisher.publish(result)
+            #print(result)
+            self.point_publisher.publish(result)
+
+            result_viz = PointStamped()
+            result_viz.point = result
+            result_viz.header.stamp = rospy.Time()
+            result_viz.header.frame_id = "imu_link"
+            self.viz_publisher.publish(result_viz)
 
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
@@ -195,60 +205,53 @@ class Pathfinding_Node:
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
             if x_pos > 0 and y_pos > 0:
+                print("I AM RESETTING THE POINTS")
                 # Calculate entropy sums.
                 for k in range(1, 20):
                     # Check down-left.
                     if (y_pos - k) > 0 and (x_pos - k) > 0:
-                        #print("I am down-left")
                         entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
                     else:
                         entropyDirections[0] = entropyDirections[0] + 20
                     
                     # Check down.
                     if (y_pos - k) > 0:
-                        #print("I am down")
                         entropyDirections[1] = entropyDirections[1] + map(x_pos, y_pos - k)
                     else:
                         entropyDirections[1] = entropyDirections[1] + 20
 
                     # Check down-right.
                     if (y_pos - k) > 0 and (x_pos + k) > 0:
-                        #print("I am down-right")
                         entropyDirections[2] = entropyDirections[2] + map(x_pos + k, y_pos - k)
                     else:
                         entropyDirections[2] = entropyDirections[2] + 20
 
                     # Check right.
                     if (x_pos + k) > 0:
-                        #print("I am right")
                         entropyDirections[3] = entropyDirections[3] + map(x_pos + k, y_pos)
                     else:
                         entropyDirections[3] = entropyDirections[3] + 20
 
                     # Check up-right.
                     if (y_pos + k) > 0 and (x_pos + k) > 0:
-                        #print("I am up-right")
                         entropyDirections[4] = entropyDirections[4] + map(x_pos + k, y_pos + k)
                     else:
                         entropyDirections[4] = entropyDirections[4] + 20
 
                     # Check up.
                     if (y_pos + k) > 0:
-                        #print("I am up")
                         entropyDirections[5] = entropyDirections[5] + map(x_pos, y_pos + k)
                     else:
                         entropyDirections[5] = entropyDirections[5] + 20
 
                     # Check up-left.
                     if (y_pos + k) > 0 and (x_pos - k) > 0:
-                        #print("I am up-left")
                         entropyDirections[6] = entropyDirections[6] + map(x_pos - k, y_pos + k)
                     else:
                         entropyDirections[6] = entropyDirections[6] + 20
 
                     # Check left.
                     if (x_pos - k) > 0:
-                        #print("I am left")
                         entropyDirections[7] = entropyDirections[7] + map(x_pos - k, y_pos)
                     else:
                         entropyDirections[7] = entropyDirections[7] + 20
@@ -330,15 +333,14 @@ class Pathfinding_Node:
 
         def entropy(x, y):
             # First grab probability. Divide by 101 such that 100 becomes 0.99.
-            print("x" + str(x))
-            print("y" + str(y))
-            p = self.mapActual.data[x + (self.mapActual.info.width * y)] / 101 
+            p = self.mapActual.data[x + (self.mapActual.info.width * y)] / 102 
             
             # Return Entropy value.
-            if p <= 0:
-                return 0
-            else:
-                return ((-p * math.log(p, 10)) - ((1 - p) * math.log(1 - p)))
+            if p < 0:
+                p = 0.5
+            
+            p = (p * 0.98) + 0.01
+            return ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
 
 
         # This method checks for obstacles between the robot and waypoint 1. Taken from camp_goto_node.
@@ -353,13 +355,13 @@ class Pathfinding_Node:
                     closestFrontObject = ranges[0]
                 else:
                     closestFrontObject = 500
-                for i in range(1, 27):
+                for i in range(1, 37):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
-                if closestFrontObject < 0.15:
+                if closestFrontObject < 0.5:
                     return True
                 else:
                     return False
@@ -368,11 +370,17 @@ class Pathfinding_Node:
         
         if obstacleCheck():
             resetWaypoints()
+            print("\nI have reset the waypoint list!")
         else:
+            print("I am here")
             dx = getMatrixPosition()[0] - self.waypoints.get(1).x
             dy = getMatrixPosition()[1] - self.waypoints.get(1).y
-            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 2:
+            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 3:
                 createNewWaypoint()
+                print("\nI am trying to go to: ")
+        print(getRoboMapPosition())
+        print(self.odom.pose.pose.position)
+
         publishWaypoints()
 
 if __name__ == '__main__':
