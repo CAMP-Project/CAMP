@@ -196,14 +196,16 @@ int main(int argc, char **argv){
         odomIn.header.frame_id = "odom";
         odomIn.header.stamp = ros::Time::now();
         
-        try {
-            //while(tfBuffer.canTransform("deca","odom", ros::Time()));
-            decaOut = tfBuffer.transform<geometry_msgs::PointStamped>(odomIn,"deca", ros::Duration(0.1));
-            ROS_INFO("\ntf'd TOF estimate:(%3.3f,%3.3f)",decaOut.point.x,decaOut.point.y);
-        } catch (tf2::TransformException &ex) {
-            ROS_WARN("%s",ex.what());
+        if (cmd == 3 || cmd == 4){
+            try {
+                //while(tfBuffer.canTransform("deca","odom", ros::Time()));
+                decaOut = tfBuffer.transform<geometry_msgs::PointStamped>(odomIn,"deca", ros::Duration(0.1));
+                ROS_INFO("\ntf'd TOF estimate:(%3.3f,%3.3f)",decaOut.point.x,decaOut.point.y);
+            } catch (tf2::TransformException &ex) {
+                ROS_WARN("%s",ex.what());
+            }
         }
-        
+
         if(cmd == 0 || somethingInFront()){
             x_vel = 0; 
             z_ang_vel = 0;
