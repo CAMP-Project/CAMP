@@ -7,7 +7,6 @@ Started 4/15/2021 by Tyler Pigott
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Vector3.h>
 #include <nav_msgs/Odometry.h>
-#include <ros/ros.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -66,7 +65,7 @@ void clearCoords(){
 }
 
 // The beefy part
-void publishOffsets(ros::Publisher transform_publisher){
+geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher,geometry_msgs::TransformStamped lastTransform){
     // i think i said that odom is the input and deca is the output.
     geometry_msgs::Vector3 tr;
     std::list<float>::iterator ox, oy, dx, dy;
@@ -146,7 +145,7 @@ void publishOffsets(ros::Publisher transform_publisher){
                 attempt++;
                 if(attempt > 3) {
                     max_point_modifier = max_point_modification;
-                    return;
+                    return lastTransform;
                 }
 
             }
@@ -164,12 +163,11 @@ void publishOffsets(ros::Publisher transform_publisher){
     ROS_INFO("Theta: %f",theta);
 	transform_publisher.publish(tr);
     //tf2 stuff
-    static tf2_ros::TransformBroadcaster br;
     geometry_msgs::TransformStamped transformStamped;
 
     transformStamped.header.stamp = ros::Time::now();
-    transformStamped.header.frame_id = "odom";
-    transformStamped.child_frame_id = "deca";
+    transformStamped.header.frame_id = "deca";
+    transformStamped.child_frame_id = "odom";
     transformStamped.transform.translation.x = tx;
     transformStamped.transform.translation.y = ty;
     transformStamped.transform.translation.z = 0.0;
@@ -180,13 +178,29 @@ void publishOffsets(ros::Publisher transform_publisher){
     transformStamped.transform.rotation.z = q.z();
     transformStamped.transform.rotation.w = q.w();
 
-    br.sendTransform(transformStamped);
+    return transformStamped;
 }
 
 int main(int argc, char **argv){
 	ros::init(argc, argv, "calibrator");
 	ros::NodeHandle nh;	
 	ros::Rate loop_rate(10);
+    
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped transformStamped;
+
+    transformStamped.header.stamp = ros::Time::now();
+    transformStamped.header.frame_id = "deca";
+    transformStamped.child_frame_id = "odom";
+    transformStamped.transform.translation.x = 0.0;
+    transformStamped.transform.translation.y = 0.0;
+    transformStamped.transform.translation.z = 0.0;
+    tf2::Quaternion q;
+    q.setRPY(0, 0, 0);
+    transformStamped.transform.rotation.x = q.x();
+    transformStamped.transform.rotation.y = q.y();
+    transformStamped.transform.rotation.z = q.z();
+    transformStamped.transform.rotation.w = q.w();
     
     ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, odomCallback);
     ros::Subscriber tag_subscriber = nh.subscribe("filtered", 10, tagCallback);
@@ -209,10 +223,11 @@ int main(int argc, char **argv){
             // Do this if there are enough points to do a conversion
             if(odom_x.size() >= min_point_count){
                 ROS_INFO("Publishing...");
-                publishOffsets(transform_publisher);
+                transformStamped = getOffsets(transform_publisher,transformStamped);
             }
         }
-
+        transformStamped.header.stamp = ros::Time::now();
+        br.sendTransform(transformStamped);
 		loop_rate.sleep();
 		ros::spinOnce();
 	}
