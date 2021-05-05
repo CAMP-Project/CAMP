@@ -142,7 +142,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/camp_goto_node.cpp)
-add_executable(${PROJECT_NAME}_node src/camp_goto_node_tf.cpp)
+add_executable(${PROJECT_NAME}_node_tf src/camp_goto_node_tf.cpp)
 add_executable(${PROJECT_NAME}_talker src/camp_goto_talker.cpp)
 add_executable(${PROJECT_NAME}_calibration src/camp_goto_calibration.cpp)
 add_executable(${PROJECT_NAME}_calibration_tf src/camp_goto_calibration_tf.cpp)

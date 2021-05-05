@@ -52,6 +52,7 @@ class Pathfinding_Node:
     def __init__(self): 
 
         rospy.init_node('pathfinding', anonymous = False)
+        self.rate = rospy.Rate(10)
 
 
         # Introduce tf package.
@@ -73,7 +74,10 @@ class Pathfinding_Node:
         # This will publish the computed waypoint information.
         self.point_publisher = rospy.Publisher('go_pos', Point, queue_size = 10)
 
-        self.viz_publisher = rospy.Publisher('point_viz', PointStamped, queue_size = 10)
+        self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
+        self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
+        self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
+        self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
 
         # Create a waypoint hashmap. Stores coordinates of waypoints.
         # [x_coordinate, y_doordinate, relative_frame]
@@ -122,17 +126,7 @@ class Pathfinding_Node:
     
             # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
         def getRoboMapPosition():
-            # Create a stamped transform.
-            transform = TransformStamped()
-            try:
-                # Attempt to get the transform. Since the origin of the map is (0, 0), the transform will equal the translational
-                # position of the robot.
-                transform = self.tfBuffer.lookup_transform(self.mapActual.header.frame_id, self.imu.header.frame_id, rospy.Time(), rospy.Duration(1.0))
-            except(tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, tf2_ros.InvalidArgumentException):
-                # Catch errors and try again.
-                rospy.sleep(0.1)
-
-            #return transform.transform.translation
+            # Use Odometry to get the robot's position.
             result = Vector3()
             result.x = self.odom.pose.pose.position.x
             result.y = self.odom.pose.pose.position.y
@@ -165,14 +159,29 @@ class Pathfinding_Node:
             x = (0.05 * waypoint.x) + self.mapActual.info.origin.position.x
             y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
             result = Point(x, y, waypoint.z)
-            #print(result)
             self.point_publisher.publish(result)
 
+            # Publish the points in rviz.
+            self.viz_publisher_1.publish(getPointInMeters(1))
+            self.viz_publisher_2.publish(getPointInMeters(2))
+            self.viz_publisher_3.publish(getPointInMeters(3))
+            self.viz_publisher_4.publish(getPointInMeters(4))
+
+
+        # Submethod for obtaining the pointstamp necessary for rviz plotting.
+        def getPointInMeters(point):
+            # Get the waypoint in units.
+            waypoint = self.waypoints.get(point)
+            x = (0.05 * waypoint.x) + self.mapActual.info.origin.position.x
+            y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
+            result = Point(x, y, waypoint.z)
+
+            # Result as a PointStamp.
             result_viz = PointStamped()
             result_viz.point = result
             result_viz.header.stamp = rospy.Time()
-            result_viz.header.frame_id = "imu_link"
-            self.viz_publisher.publish(result_viz)
+            result_viz.header.frame_id = "map"
+            return result_viz
 
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
@@ -205,7 +214,6 @@ class Pathfinding_Node:
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
             if x_pos > 0 and y_pos > 0:
-                print("I AM RESETTING THE POINTS")
                 # Calculate entropy sums.
                 for k in range(1, 20):
                     # Check down-left.
@@ -327,7 +335,7 @@ class Pathfinding_Node:
         # This method calculates and returns the entropy data at a given matrix coordinate.
         def map(x, y):
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
-                return 0
+                return 100
             else:
                 return self.mapActual.data[x + (self.mapActual.info.width * y)]
 
@@ -368,18 +376,28 @@ class Pathfinding_Node:
             else:
                 return True
         
+        reset = False
+        newPoint = False
         if obstacleCheck():
             resetWaypoints()
-            print("\nI have reset the waypoint list!")
+            reset = True
         else:
-            print("I am here")
             dx = getMatrixPosition()[0] - self.waypoints.get(1).x
             dy = getMatrixPosition()[1] - self.waypoints.get(1).y
             if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 3:
                 createNewWaypoint()
-                print("\nI am trying to go to: ")
-        print(getRoboMapPosition())
-        print(self.odom.pose.pose.position)
+                newPoint = True
+
+        rospy.loginfo("\nPoint 1 :\n" +
+                      str(self.waypoints.get(1)) +
+                      "\nPoint 2 :\n" +
+                      str(self.waypoints.get(2)) +
+                      "\nPoint 3 :\n" +
+                      str(self.waypoints.get(3)) +
+                      "\nPoint 4 :\n" +
+                      str(self.waypoints.get(4)) +
+                      "\nReset     : " + str(reset) + 
+                      "\nCalculate : " + str(newPoint))
 
         publishWaypoints()
 
