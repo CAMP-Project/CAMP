@@ -13,6 +13,8 @@
 #
 # 4/15/2021 - Sean Carda: Created script and initial methods.
 #
+# 5/5/2021  - Sean Carda: Finalized the code. It is entirely possible that more
+#                         edits will be necessary.
 #
 #
 #----------------------------------------------------------------------------------------
@@ -31,39 +33,27 @@
 
 # Package imports.
 import math
-import tf2_ros
 import roslib
 import numpy as np;
 import rospy
-import tf2_geometry_msgs
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Twist, Vector3, Pose, Quaternion, Point, TransformStamped, PoseStamped, Transform, PointStamped
-from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
-from sensor_msgs.msg import Imu, LaserScan
-from localizer_dwm1001.msg import Tag
-from std_msgs.msg import String, Float64, Int8
-from camp_pathfinding.msg import Waypoints
-from tf2_msgs.msg import TFMessage
+from geometry_msgs.msg import Vector3, Point, PointStamped
+from nav_msgs.msg import Odometry, OccupancyGrid
+from sensor_msgs.msg import LaserScan
 
 class Pathfinding_Node:
 
+    #--------------------------------------------------------------------------------------------------------------
+    # Initialization of ROS attributes and global variables.
+    #--------------------------------------------------------------------------------------------------------------
     def __init__(self): 
-
+        # Have ROS initialize this script as a node in rqt.
         rospy.init_node('pathfinding', anonymous = False)
-        self.rate = rospy.Rate(10)
-
-
-        # Introduce tf package.
-        self.tfBuffer = tf2_ros.Buffer()
-        self.transformListener = tf2_ros.TransformListener(self.tfBuffer)
 
         # Subscribe to map.
-        rospy.Subscriber('/map', OccupancyGrid, self.updateMap)    
-
-        # Subscribe to robot imu.
-        rospy.Subscriber('/imu', Imu, self.imuUpdate)   
+        rospy.Subscriber('/map', OccupancyGrid, self.updateMap)      
         
         # Subscribe to LiDAR.
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)
@@ -73,13 +63,15 @@ class Pathfinding_Node:
 
         # This will publish the computed waypoint information.
         self.point_publisher = rospy.Publisher('go_pos', Point, queue_size = 10)
-
+        
+        # Instantiate publlishers for displaying the waypoints in rviz. This will be invaluable for debugging.
         self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
 
-        # Create a waypoint hashmap. Stores coordinates of waypoints.
+        # Create a waypoint hashmap. Stores coordinates of waypoints. This will start as an 
+        # arbitrary set of points away from the robot.
         # [x_coordinate, y_doordinate, relative_frame]
         # relative frames:
         # 0: Stop
@@ -90,12 +82,12 @@ class Pathfinding_Node:
                           3 : Point(209, 209, 1),
                           4 : Point(212, 212, 1)}
 
+        # Initialize important data types. For this script, we need access to the OccupancyGrid produced
+        # by SLAM. We need the Lidar for obstacle detection. We need the odometry for positional data. 
         self.mapActual = OccupancyGrid() 
-        self.lidar = LaserScan()                          # Variable to access parameters of the lidar.
-        self.imu = Imu()
+        self.lidar = LaserScan()                         
         self.odom = Odometry()
 
-        self.obstacleDetect = False                       # Indicates whether an object is blocking the path of the robot.
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -105,10 +97,6 @@ class Pathfinding_Node:
     # from the generated map.
     def updateMap(self, data):
         self.mapActual = data
-
-    # Update IMU data.
-    def imuUpdate(self, data):
-        self.imu = data
 
     # This method will update lidar data when new data will be available. This method grabs every parameter 
     # from the lidar node.
@@ -130,7 +118,12 @@ class Pathfinding_Node:
             result = Vector3()
             result.x = self.odom.pose.pose.position.x
             result.y = self.odom.pose.pose.position.y
+            
+            # The z position in this context, as described above, is the frame in which the robot will move. The value
+            # here will be 1 since we want the robot to move relative to its own odometry.
             result.z = 1
+
+            # Return.
             return result
 
 
@@ -149,13 +142,18 @@ class Pathfinding_Node:
             # Convert to matrix position. Used for map data traversing.
             position_in_units = np.divide(position_in_meters, 0.05)
             position_in_units = [int(round(num, 0)) for num in position_in_units]
-
+            
+            # Return.
             return position_in_units
 
 
         # Method for publishing waypoints to RQT. 
         def publishWaypoints():
+            # First get the waypoint, which is in units.
             waypoint = self.waypoints.get(1)
+
+            # Calculate the waypoint in meters. Cannot use getPointInMeters method as it returns
+            # a PointStamped. We want this published in a format that camp_goto to read: a Point.
             x = (0.05 * waypoint.x) + self.mapActual.info.origin.position.x
             y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
             result = Point(x, y, waypoint.z)
@@ -191,7 +189,7 @@ class Pathfinding_Node:
             x_pos = getMatrixPosition()[0]
             y_pos = getMatrixPosition()[1]
             
-            # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
+            # Entropy positions: [down-left, down, down-right, right, up-right, up, up-left, left]
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
             N = self.mapActual.info.height
 
@@ -304,7 +302,7 @@ class Pathfinding_Node:
                 7 : [-d, 0] 
             }
 
-            # Calculate entropy to the upper right of waypoint 3
+            # Calculate entropy squares in 8 different directions around the robot. 
             entropyDirections[0] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 15, point_y - 5)
             entropyDirections[1] = grabEntropySquare(point_x - 5, point_x + 5, point_y - 15, point_y - 5)
             entropyDirections[2] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 15, point_y - 5)
@@ -312,42 +310,57 @@ class Pathfinding_Node:
             entropyDirections[4] = grabEntropySquare(point_x + 5, point_x + 15, point_y + 5, point_y + 15)
             entropyDirections[5] = grabEntropySquare(point_x - 5, point_x + 5, point_y + 5, point_y + 15)
             entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y + 5, point_y + 15)
-            entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5)
+            entropyDirections[7] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5)
 
-            # Find the direction to place a new waypoint.
+            # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
+            # The entropy tells the robot where the "highest reward" is.
             direction = entropyDirections.index(max(entropyDirections))              
 
             # Get the number of squares to increase in either direction depending on the calculated direction.
             differential = advancementMap.get(direction)
 
+            # Add the new waypoint to the waypoint list.
             self.waypoints[4] = Point(point_x + differential[0], point_y + differential[1], 1)
 
 
-
+        # Method to calculate an entire region of entropy. Reduces the necessary lines of code to write.
         def grabEntropySquare(range_x_1, range_x_2, range_y_1, range_y_2):
+            # Initialize the result of the scan.
             result = 0
+
+            # On the bounds of the given entropy region, calculate the total entropy.
             for i in range(range_x_1, range_x_2):
                 for j in range(range_y_1, range_y_2):
                     result = result + entropy(i, j)
+
+            # Return.
             return result
                 
 
         # This method calculates and returns the entropy data at a given matrix coordinate.
         def map(x, y):
+            # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
+            # to regions that have not been explored.
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
                 return 100
+            # Return.
             else:
                 return self.mapActual.data[x + (self.mapActual.info.width * y)]
 
+        # Method to calculate the entropy at a given map index.
         def entropy(x, y):
-            # First grab probability. Divide by 101 such that 100 becomes 0.99.
+            # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
             p = self.mapActual.data[x + (self.mapActual.info.width * y)] / 102 
             
-            # Return Entropy value.
+            # If the value of the probability at the given index is negative, replace it with 0.5.
+            # Note: this does not replace the value of the probability value in the OccupancyMap.
             if p < 0:
                 p = 0.5
             
+            # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
+
+            # Return.
             return ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
 
 
@@ -363,12 +376,15 @@ class Pathfinding_Node:
                     closestFrontObject = ranges[0]
                 else:
                     closestFrontObject = 500
+
+                # Increment the second value in this loop to sweep over a larger angle.
                 for i in range(1, 37):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
+                # Threshold distance. *This double is in meters.
                 if closestFrontObject < 0.5:
                     return True
                 else:
@@ -376,8 +392,12 @@ class Pathfinding_Node:
             else:
                 return True
         
-        reset = False
-        newPoint = False
+        # Main functionality of the pathfinding code. 
+        reset = False     # For debug. Prints if the algorithm is currently resetting the path.
+        newPoint = False  # For debug. Prints if the algorithm is currently calculating a new point.
+
+        # First, check for obstacles. If an obstacle is found between the robot and it's target, reset the path.
+        # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
         if obstacleCheck():
             resetWaypoints()
             reset = True
@@ -388,6 +408,7 @@ class Pathfinding_Node:
                 createNewWaypoint()
                 newPoint = True
 
+        # ROS info for debugging. Prints the waypoints and boolean information regarding the algorithm's status.
         rospy.loginfo("\nPoint 1 :\n" +
                       str(self.waypoints.get(1)) +
                       "\nPoint 2 :\n" +
@@ -399,11 +420,15 @@ class Pathfinding_Node:
                       "\nReset     : " + str(reset) + 
                       "\nCalculate : " + str(newPoint))
 
+        # Publish the waypoints to rqt for other scripts to use.
         publishWaypoints()
 
+# Trigger functionality. Run this script until the keyboardInterrupt is triggered.
 if __name__ == '__main__':
     path = Pathfinding_Node()
     while not rospy.is_shutdown():
         path.main()
+
+        # Run at 10 Hz.
         rospy.sleep(0.1)
 
