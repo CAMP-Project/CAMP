@@ -53,9 +53,12 @@ private:
     std::vector<ros::Subscriber> _subs;
     std::vector<ros::Publisher> _pubs;
 
+    std::map<std::string, ros::Subscriber> _sub_map;
+
     // Multimaster entry point, this is how this system
     // finds other robots on the network
     ros::ServiceClient _mm_entry_point;
+
     // DiscoverMasters service data structure
     fkie_multimaster_msgs::DiscoverMasters _fkie_service;
 
@@ -75,9 +78,13 @@ private:
 
     // List of positions of all hosts on the network
     std::vector<geometry_msgs::Twist> _positions;
+    std::map<std::string, geometry_msgs::Twist> _positions_map;
 
     // List of maps of all hosts on the network 
     std::vector<nav_msgs::OccupancyGrid> _maps;
+
+    // What a name ay?
+    std::map<std::string, nav_msgs::OccupancyGrid> _maps_map;
 
     // Information of the current host that is running this code
     fkie_multimaster_msgs::MasterState _my_state;
@@ -90,7 +97,7 @@ private:
 
     // Odometry sub callback for multimaster
 
-    void mm_position_callback(int foo, const geometry_msgs::Twist::ConstPtr& pos);
+    void mm_position_callback(std::string, const geometry_msgs::Twist::ConstPtr&);
 
     // Odometry sub callback for local odometry
 
@@ -98,7 +105,7 @@ private:
 
     // Map sub callback for multimaster
 
-    void mm_map_callback(int foo, const nav_msgs::OccupancyGrid::ConstPtr& map);
+    void mm_map_callback(std::string, const nav_msgs::OccupancyGrid::ConstPtr&);
 
     // Map sub callback for local map
 
@@ -109,6 +116,8 @@ private:
     void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms);
 
     bool _sub_comp(ros::Subscriber & obj, std::string name);
+
+    bool _host_comp(fkie_multimaster_msgs::ROSMaster, std::string);
 
     bool is_number(std::string);
 

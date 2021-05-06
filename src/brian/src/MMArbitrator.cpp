@@ -52,7 +52,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
                 this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10);
             }
             // Lets publish the current robot's information before grabbing other things
-            if (this->_current_name.size() > 2)
+            else if (this->_current_name.size() > 2)
             {
                 this->_map_pub.publish(this->_my_map);
                 this->_odom_pub.publish(this->_my_odom);
@@ -64,9 +64,14 @@ void MMArbitrator::sync(ros::NodeHandle n)
         {
             debug_print("Host Disconnected");
             debug_print("Skipping this iteration");
-            for (int i = 0; i < s; i++)
+            std::vector<fkie_multimaster_msgs::ROSMaster> hosts = this->_fkie_service.response.masters;
+            // Check all of the currents hosts to see which one disconnected
+            for (int i = 0; i < this->_available.size(); i++)
             {
-                
+                // Check if all the current avialble hosts are inside the hosts list given by fkie
+                // If not found, remove it
+                if (std::find_if(hosts.begin(), hosts.end(), boost::bind(&MMArbitrator::_host_comp, this, _1, _available.at(i))) == hosts.end())
+                    this->_available.erase(this->_available.begin() + i);
             }
             return;
         }
@@ -101,8 +106,11 @@ void MMArbitrator::sync(ros::NodeHandle n)
                     // Odom Subscriber for this host has not been setup yet. Let's set it up now.
                     ros::Subscriber new_odom = n.subscribe<geometry_msgs::Twist>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1));
                     this->_subs.push_back(new_odom);
+                    this->_sub_map.insert({new_host+"/odom", new_odom});
+                    // Map Subscriber for this host has not been setup yet. Let's also set that up.
                     ros::Subscriber new_map = n.subscribe<nav_msgs::OccupancyGrid>(new_host+"/map", 10, boost::bind(&MMArbitrator::mm_map_callback, this, (int)this->_subs.size(), _1));
                     this->_subs.push_back(new_map);
+                    this->_sub_map.insert({new_host+"/map", new_map});
                 }
             }
             // If the current host is found, nothing else needs to be done and 
@@ -129,7 +137,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
  * @param foo Index of the object to update
  * @param pos Twist object
  */
-void MMArbitrator::mm_position_callback(int foo, const geometry_msgs::Twist::ConstPtr& pos)
+void MMArbitrator::mm_position_callback(std::string s, const geometry_msgs::Twist::ConstPtr& pos)
 {}
 
 /**
@@ -149,7 +157,7 @@ void MMArbitrator::_position_callback(const geometry_msgs::Twist::ConstPtr& pos)
  * @param foo Index of the object to update
  * @param map OccupancyGrid object
  */
-void MMArbitrator::mm_map_callback(int foo, const nav_msgs::OccupancyGrid::ConstPtr& map)
+void MMArbitrator::mm_map_callback(std::string s, const nav_msgs::OccupancyGrid::ConstPtr& map)
 {}
 
 /**
@@ -198,6 +206,19 @@ bool MMArbitrator::_sub_comp(ros::Subscriber & obj, std::string name)
         return true;
     else
         return false;
+}
+
+/**
+ * @brief Compare a ROSMaster's  name to a string
+ * 
+ * @param rm ROSMaster object to compare to
+ * @param s String to compare name to
+ * @return true If the Name of the ROSMaster is equal to the string
+ * @return false If the Name of the ROSMaster is not equal to string
+ */
+bool MMArbitrator::_host_comp(fkie_multimaster_msgs::ROSMaster rm, std::string s)
+{
+    return rm.name.compare(s) == 0;
 }
 
 /**
