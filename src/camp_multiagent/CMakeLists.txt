@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   nav_msgs
+  std_msgs
   tf2
   tf2_ros
 )
@@ -78,6 +79,7 @@ generate_messages(
   geometry_msgs
   sensor_msgs 
   nav_msgs
+  std_msgs
   camp_multiagent
 )
 
@@ -113,7 +115,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES camp_multiagent
-  CATKIN_DEPENDS geometry_msgs message_generation roscpp rospy sensor_msgs nav_msgs tf2 tf2_ros
+  CATKIN_DEPENDS geometry_msgs message_generation roscpp rospy sensor_msgs nav_msgs std_msgs tf2 tf2_ros
 #  DEPENDS system_lib
 )
 
