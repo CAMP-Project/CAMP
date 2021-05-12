@@ -66,12 +66,33 @@ void MMArbitrator::sync(ros::NodeHandle n)
             debug_print("Skipping this iteration");
             std::vector<fkie_multimaster_msgs::ROSMaster> hosts = this->_fkie_service.response.masters;
             // Check all of the currents hosts to see which one disconnected
+            std::vector<int> hosts_to_remove;
             for (int i = 0; i < this->_available.size(); i++)
             {
                 // Check if all the current avialble hosts are inside the hosts list given by fkie
                 // If not found, remove it
                 if (std::find_if(hosts.begin(), hosts.end(), boost::bind(&MMArbitrator::_host_comp, this, _1, _available.at(i))) == hosts.end())
-                    this->_available.erase(this->_available.begin() + i);
+                {
+                    // Collect a list of hosts to remove
+                    hosts_to_remove.push_back(i);
+
+                    // Figure out the name the host to remove
+                    std::string host_to_remove = check_host(this->_available.at(i));
+
+                    // Shutdown and remove the odom and map subsribers for this specific host
+                    this->_sub_map.find(host_to_remove+"/odom")->second.shutdown();
+                    this->_sub_map.erase(host_to_remove+"/odom");
+
+                    this->_sub_map.find(host_to_remove+"/map")->second.shutdown();
+                    this->_sub_map.erase(host_to_remove+"/map");
+
+                    debug_print("Shutdown host: " + host_to_remove);
+                }
+
+                // Remove hosts from list of available hosts starting from the end of the list as not to change 
+                // the size of _available and screw up the indexing order
+                for(int i = hosts_to_remove.size(); i > 0; i--)
+                    this->_available.erase(this->_available.begin()+i);
             }
             return;
         }
@@ -236,9 +257,7 @@ bool MMArbitrator::_sub_comp(ros::Subscriber & obj, std::string name)
  * @return false If the Name of the ROSMaster is not equal to string
  */
 bool MMArbitrator::_host_comp(fkie_multimaster_msgs::ROSMaster rm, std::string s)
-{
-    return rm.name.compare(s) == 0;
-}
+{ return check_host(rm.name).compare(s) == 0; }
 
 /**
  * @brief Class Destructor
