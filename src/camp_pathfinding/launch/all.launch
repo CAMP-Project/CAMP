@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <!--Launch the turtlebot3 baseline objects-->
+    <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+
+    <!--Launch Turtlebot3 SLAM-->
+    <include file="$(find turtlebot3_slam)/launch/turtlebot3_slam.launch">
+        <arg name="open_rviz" value="false"/>
+    </include>
+    
+    <!--Launch CAMP Pathfinding-->
+    <include file="$(find camp_pathfinding)/launch/pathfinding.launch" />
+
+    <!--Launch CAMP goto node-->
+    <node pkg="camp_goto" type="node" name="node" output="screen"/>
+
+
+</launch>
