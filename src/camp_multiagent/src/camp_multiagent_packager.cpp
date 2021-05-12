@@ -29,10 +29,13 @@ geometry_msgs::Point getDecaPosition(geometry_msgs::PointStamped in){
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener(tfBuffer);
     geometry_msgs::PointStamped out;
+    in.header.stamp = ros::Time::now();
     try {
-        out = tfBuffer.transform<geometry_msgs::PointStamped>(in,"deca", ros::Duration(0.1));
+        //while(!tfBuffer.canTransform("deca","odom",ros::Time::now()));
+        out = tfBuffer.transform<geometry_msgs::PointStamped>(in,"deca", ros::Duration(1));
+        ROS_INFO("successful transform");
     } catch (tf2::TransformException &ex) {
-        ROS_WARN("%s",ex.what());
+        ROS_WARN("error on transform:\n%s",ex.what());
     }
     return out.point;
 }
@@ -69,8 +72,14 @@ std::vector<signed char> getDecaMap(nav_msgs::OccupancyGrid map){
     newDimensions = sqrt(height*height+width*width);
 
     // go through each element in the new array and fill it in with something
-    //det the angle that changes decawave points to odometry
-    d2o = tfBuffer.lookupTransform("odom","deca",ros::Time(0),ros::Duration(0.1));
+    //get the angle that changes decawave points to odometry
+    try {
+        d2o = tfBuffer.lookupTransform("odom","deca",ros::Time(0),ros::Duration(1));
+        ROS_INFO("successful lookup");
+    } catch (tf2::TransformException &ex) {
+        ROS_WARN("error on lookup:\n%s",ex.what());
+        d2o.transform.rotation.w = 0;
+    }
     //assuming rotation is only about the z axis
     theta = acos(d2o.transform.rotation.w)*2;
     //other useful params
