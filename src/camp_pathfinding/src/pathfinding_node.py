@@ -88,6 +88,12 @@ class Pathfinding_Node:
         self.lidar = LaserScan()                         
         self.odom = Odometry()
 
+        # This is a check to prevent the robot from conducting too many reset calculations at once.
+        self.reset = False
+        
+        # Track number of fails during a new waypoint calculation.
+        self.fails = 0
+
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -280,8 +286,12 @@ class Pathfinding_Node:
             point_x = self.waypoints.get(4).x
             point_y = self.waypoints.get(4).y
 
+            # Map limit.
+            N = self.mapActual.info.height
+
             # Shift the waypoint list.
-            for i in range(4):
+            for i in range(3):
+                print("Cycling the points!")
                 self.waypoints[i + 1] = self.waypoints.get(i + 2)
 
             # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
@@ -312,15 +322,64 @@ class Pathfinding_Node:
             entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y + 5, point_y + 15)
             entropyDirections[7] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5)
 
-            # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
-            # The entropy tells the robot where the "highest reward" is.
-            direction = entropyDirections.index(max(entropyDirections))              
+            # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
+            # It is assumed to be true that there is an obstacle between the points.
+            isObstacle = 1
 
-            # Get the number of squares to increase in either direction depending on the calculated direction.
-            differential = advancementMap.get(direction)
+            # Track number of path fails.
+            self.fails = 0
 
-            # Add the new waypoint to the waypoint list.
-            self.waypoints[4] = Point(point_x + differential[0], point_y + differential[1], 1)
+            while isObstacle == 1:
+                # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
+                # The entropy tells the robot where the "highest reward" is.
+                direction = entropyDirections.index(max(entropyDirections))              
+
+                # Get the number of squares to increase in either direction depending on the calculated direction.
+                differential = advancementMap.get(direction)
+                dx = differential[0]
+                dy = differential[1]
+
+                # Get the 3rd waypoint for ease of calculations.
+                end = self.waypoints.get(3)
+
+                # Check for duplicate points.
+                duplicates = 0
+                for i in range(1, 3):
+                    if end.x + dx == self.waypoints.get(i).x or end.y + dx == self.waypoints.get(i).y:
+                        duplicates = duplicates + 1
+
+                # Connect the 3rd point and the theoretical last point.
+                yMin = min([end.y, end.y + dy])
+                yMax = max([end.y, end.y + dy])
+                xMin = min([end.x, end.x + dx])
+                xMax = max([end.x, end.x + dx])
+
+                # Check for bounds errors or if any duplicates exist. If so, restart the sweek by setting the entropy
+                # sum in that direction to 0. This will prevent that direction from being searched again since the 
+                # algorithm checks for the maximum entropy value.
+                if yMin < 2 or yMax > N - 1 or xMin < 2 or xMax > N - 1 or duplicates > 0:
+                    entropyDirections[direction] = 0
+                else:
+                    maximum = 0
+                    for i in range(yMin - 1, yMax + 1):
+                        for j in range(xMin - 1, xMax + 1):
+                            if entropy(i, j) > maximum:
+                                maximum = entropy(i, j)
+
+                    if maximum > 0.7:
+                        entropyDirections[direction] = 0
+                    else:
+                        self.waypoints[4] = Point(point_x + dx, point_y + dy, 1)
+                        isObstacle = 0
+
+                # Track number of fails.
+                self.fails = self.fails + 1
+
+                if self.fails > 7:
+                    resetWaypoints()
+                    isObstacle = 0
+                    self.fails = 0
+
 
 
         # Method to calculate an entire region of entropy. Reduces the necessary lines of code to write.
@@ -378,14 +437,14 @@ class Pathfinding_Node:
                     closestFrontObject = 500
 
                 # Increment the second value in this loop to sweep over a larger angle.
-                for i in range(1, 37):
+                for i in range(1, 17):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
                 # Threshold distance. *This double is in meters.
-                if closestFrontObject < 0.5:
+                if closestFrontObject < 0.2:
                     return True
                 else:
                     return False
@@ -393,18 +452,17 @@ class Pathfinding_Node:
                 return True
         
         # Main functionality of the pathfinding code. 
-        reset = False     # For debug. Prints if the algorithm is currently resetting the path.
         newPoint = False  # For debug. Prints if the algorithm is currently calculating a new point.
-
+        self.reset = False
         # First, check for obstacles. If an obstacle is found between the robot and it's target, reset the path.
         # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
         if obstacleCheck():
             resetWaypoints()
-            reset = True
+            self.reset = True
         else:
             dx = getMatrixPosition()[0] - self.waypoints.get(1).x
             dy = getMatrixPosition()[1] - self.waypoints.get(1).y
-            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 3:
+            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 2:
                 createNewWaypoint()
                 newPoint = True
 
@@ -417,8 +475,9 @@ class Pathfinding_Node:
                       str(self.waypoints.get(3)) +
                       "\nPoint 4 :\n" +
                       str(self.waypoints.get(4)) +
-                      "\nReset     : " + str(reset) + 
-                      "\nCalculate : " + str(newPoint))
+                      "\nReset     : " + str(self.reset) + 
+                      "\nCalculate : " + str(newPoint) + 
+                      "\nFails     : " + str(self.fails))
 
         # Publish the waypoints to rqt for other scripts to use.
         publishWaypoints()
