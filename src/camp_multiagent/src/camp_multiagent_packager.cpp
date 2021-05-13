@@ -26,10 +26,10 @@ float odom2decaY(float x, float y) {
     return x*sin(tf.theta)+y*cos(tf.theta)+tf.y;
 }
 
-float deca2OdomX(float x, float y){
+float deca2odomX(float x, float y){
     return (x-tf.x)*cos(tf.theta)+(y-tf.y)*sin(tf.theta);
 }
-float deca2OdomY(float x, float y){
+float deca2odomY(float x, float y){
     return -(x-tf.x)*sin(tf.theta)+(y-tf.y)*cos(tf.theta);
 }
 
@@ -65,7 +65,7 @@ nav_msgs::OccupancyGrid getDecaMap(){
     int width, height, newDimensions;
     int w2,h2,d2;
     int mIn, nIn;
-    float resolution, theta, c, s;
+    float resolution;
 
     //Get a bunch of map data
     dataIn = odomMap.data;
@@ -84,8 +84,8 @@ nav_msgs::OccupancyGrid getDecaMap(){
     //with maps centers alligned, take every element of our new decawave map and find what value on the odom map correlates.
     for(int m = 0; m < newDimensions; m++){
         for(int n = 0; n < newDimensions; n++){
-            mIn = int(round(deca2OdomX(m-d2,n-d2)+h2));
-            nIn = int(round(deca2OdomY(m-d2,n-d2)+w2));
+            mIn = int(round(deca2odomX(m-d2,n-d2)+h2));
+            nIn = int(round(deca2odomY(m-d2,n-d2)+w2));
             if (mIn >= 0 && mIn < height && nIn >= 0 && nIn < width) {
                 dataOut.push_back(dataIn.at((mIn)*height+(nIn)));
             } else {
@@ -103,11 +103,14 @@ nav_msgs::OccupancyGrid getDecaMap(){
     out.info.origin.orientation = odomMap.info.origin.orientation;
     geometry_msgs::Point position;
 
-    float tempX = (deca2OdomX(0-d2,0-d2)+h2)*out.info.resolution + odomMap.info.origin.position.x;
-    float tempY = (deca2OdomY(0-d2,0-d2)+w2)*out.info.resolution + odomMap.info.origin.position.y;
+    float tempX = (deca2odomX(0-d2,0-d2)+h2)*out.info.resolution + odomMap.info.origin.position.x;
+    float tempY = (deca2odomY(0-d2,0-d2)+w2)*out.info.resolution + odomMap.info.origin.position.y;
 
     out.info.origin.position.x = odom2decaX(tempX,tempY);
     out.info.origin.position.y = odom2decaY(tempX,tempY);
+
+    out.header.stamp = ros::Time::now();
+    out.header.frame_id = "deca";
 
     return out;
 }
@@ -116,7 +119,7 @@ int main(int argc, char **argv){
 	ros::init(argc, argv, "multiagent_packager");
 	ros::NodeHandle nh;	
     //loop every 10 secs
-	ros::Rate loop_rate(0.1);
+	ros::Rate loop_rate(0.3);
     
     ros::Subscriber position_subscriber = nh.subscribe("odom", 10, positionCallback);
     ros::Subscriber map_subscriber = nh.subscribe("map", 10, mapCallback);
@@ -133,9 +136,6 @@ int main(int argc, char **argv){
     while(ros::ok()) {
         pos.header.stamp = ros::Time::now();
         pos.header.frame_id = "deca";
-        map.header.stamp = ros::Time::now();
-        map.header.frame_id = "deca";
-
         pos.point = getDecaPosition();
 
         map = getDecaMap();

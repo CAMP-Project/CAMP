@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node pkg="camp_multiagent" type="camp_multiagent_opener" name="opener" output="screen"/>
+
+</launch>
