@@ -69,6 +69,8 @@ class Pathfinding_Node:
         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
+        self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
+        
 
         # Create a waypoint hashmap. Stores coordinates of waypoints. This will start as an 
         # arbitrary set of points away from the robot.
@@ -77,10 +79,10 @@ class Pathfinding_Node:
         # 0: Stop
         # 1: Odometry
         # 2: Decawave
-        self.waypoints = {1 : Point(203, 203, 1),
-                          2 : Point(206, 206, 1),
-                          3 : Point(209, 209, 1),
-                          4 : Point(212, 212, 1)}
+        self.waypoints = {1 : Point(206, 206, 1),
+                          2 : Point(212, 212, 1),
+                          3 : Point(218, 218, 1),
+                          4 : Point(224, 224, 1)}
 
         # Initialize important data types. For this script, we need access to the OccupancyGrid produced
         # by SLAM. We need the Lidar for obstacle detection. We need the odometry for positional data. 
@@ -93,6 +95,9 @@ class Pathfinding_Node:
         
         # Track number of fails during a new waypoint calculation.
         self.fails = 0
+
+        # Property which holds on to the satisfactory distance for when a new point should be generated.
+        self.satisDist = 1
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -146,9 +151,11 @@ class Pathfinding_Node:
                                   y_map_offset + robo_position.y]
 
             # Convert to matrix position. Used for map data traversing.
-            position_in_units = np.divide(position_in_meters, 0.05)
-            position_in_units = [int(round(num, 0)) for num in position_in_units]
-            
+            position_in_units = [0, 0]
+            for i in range(2):
+                position_in_units[i] = round(position_in_meters[i] / 0.05, 0)
+                position_in_units[i] = int(position_in_units[i])
+
             # Return.
             return position_in_units
 
@@ -171,6 +178,15 @@ class Pathfinding_Node:
             self.viz_publisher_3.publish(getPointInMeters(3))
             self.viz_publisher_4.publish(getPointInMeters(4))
 
+            roboPosX = getRoboMapPosition().x
+            roboPosY = getRoboMapPosition().y
+            roboPos = PointStamped()
+            roboPos.header.stamp = rospy.Time()
+            roboPos.header.frame_id = "map"
+            roboPos.point = Point(roboPosX, roboPosY, 1)
+
+            self.robot_publisher.publish(roboPos)
+
 
         # Submethod for obtaining the pointstamp necessary for rviz plotting.
         def getPointInMeters(point):
@@ -192,29 +208,45 @@ class Pathfinding_Node:
         # to waypoint 1 or if all paths fail around waypoint 3.
         def resetWaypoints():
             # Get position of robot as a matrix value in the map.
+            #x_pos = int(getMatrixPosition()[0])
+            #y_pos = int(getMatrixPosition()[1])
+
             x_pos = getMatrixPosition()[0]
             y_pos = getMatrixPosition()[1]
+
             
             # Entropy positions: [down-left, down, down-right, right, up-right, up, up-left, left]
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
             N = self.mapActual.info.height
 
+            dist1 = 10
+            dist2 = 2 * dist1
+            dist3 = 3 * dist1
+            dist4 = 4 * dist1
+
             # Calculate the possible waypoint paths to take based on whichever direction is calculated.
-            waypointMap = {0 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
-                                [y_pos - 4, y_pos - 8, y_pos - 12, y_pos - 16]],
+            waypointMap = {0 : [[x_pos - dist1, x_pos - dist2, x_pos - dist3, x_pos - dist4],
+                                [y_pos - dist1, y_pos - dist2, y_pos - dist3, y_pos - dist4]],
+                           
                            1 : [[x_pos, x_pos, x_pos, x_pos],
-                                [y_pos - 4, y_pos - 8, y_pos - 12, y_pos - 16]],
-                           2 : [[x_pos + 4, x_pos + 8, x_pos + 12, x_pos + 16],
-                                [y_pos - 4, y_pos - 8, y_pos - 12, y_pos - 16]],
-                           3 : [[x_pos + 4, x_pos + 8, x_pos + 12, x_pos + 16],
+                                [y_pos - dist1, y_pos - dist2, y_pos - dist3, y_pos - dist4]],
+                           
+                           2 : [[x_pos + dist1, x_pos + dist2, x_pos + dist3, x_pos + dist4],
+                                [y_pos - dist1, y_pos - dist2, y_pos - dist3, y_pos - dist4]],
+                           
+                           3 : [[x_pos + dist1, x_pos + dist2, x_pos + dist3, x_pos + dist4],
                                 [y_pos, y_pos, y_pos, y_pos]],
-                           4 : [[x_pos + 4, x_pos + 8, x_pos + 12, x_pos + 16],
-                                [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
+                           
+                           4 : [[x_pos + dist1, x_pos + dist2, x_pos + dist3, x_pos + dist4],
+                                [y_pos + dist1, y_pos + dist2, y_pos + dist3, y_pos + dist4]],
+                           
                            5 : [[x_pos, x_pos, x_pos, x_pos],
-                                [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
-                           6 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
-                                [y_pos + 4, y_pos + 8, y_pos + 12, y_pos + 16]],
-                           7 : [[x_pos - 4, x_pos - 8, x_pos - 12, x_pos - 16],
+                                [y_pos + dist1, y_pos + dist2, y_pos + dist3, y_pos + dist4]],
+                           
+                           6 : [[x_pos - dist1, x_pos - dist2, x_pos - dist3, x_pos - dist4],
+                                [y_pos + dist1, y_pos + dist2, y_pos + dist3, y_pos + dist4]],
+                           
+                           7 : [[x_pos - dist1, x_pos - dist2, x_pos - dist3, x_pos - dist4],
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
             if x_pos > 0 and y_pos > 0:
@@ -275,8 +307,10 @@ class Pathfinding_Node:
             path = waypointMap.get(direction)
 
             # Establish path as a series of new waypoints.
-            for i in range(4):
-                self.waypoints[i + 1] = Point(path[0][i], path[1][i], 1)
+            self.waypoints[1] = Point(path[0][0], path[1][0], 1)
+            self.waypoints[2] = Point(path[0][1], path[1][1], 1)
+            self.waypoints[3] = Point(path[0][2], path[1][2], 1)
+            self.waypoints[4] = Point(path[0][3], path[1][3], 1)
 
 
         # This method will create a new waypoint once the robot is within a certain distance
@@ -288,11 +322,6 @@ class Pathfinding_Node:
 
             # Map limit.
             N = self.mapActual.info.height
-
-            # Shift the waypoint list.
-            for i in range(3):
-                print("Cycling the points!")
-                self.waypoints[i + 1] = self.waypoints.get(i + 2)
 
             # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -361,23 +390,26 @@ class Pathfinding_Node:
                     entropyDirections[direction] = 0
                 else:
                     maximum = 0
-                    for i in range(yMin - 1, yMax + 1):
-                        for j in range(xMin - 1, xMax + 1):
+                    for i in range(xMin - 1, xMax + 1):
+                        for j in range(yMin - 1, yMax + 1):
                             if entropy(i, j) > maximum:
                                 maximum = entropy(i, j)
 
                     if maximum > 0.7:
                         entropyDirections[direction] = 0
                     else:
+                        self.waypoints[1] = self.waypoints[2]
+                        self.waypoints[2] = self.waypoints[3]
+                        self.waypoints[3] = self.waypoints[4]
                         self.waypoints[4] = Point(point_x + dx, point_y + dy, 1)
                         isObstacle = 0
+                        self.fails = 0
 
                 # Track number of fails.
                 self.fails = self.fails + 1
 
                 if self.fails > 7:
                     resetWaypoints()
-                    isObstacle = 0
                     self.fails = 0
 
 
@@ -459,13 +491,16 @@ class Pathfinding_Node:
         if obstacleCheck():
             resetWaypoints()
             self.reset = True
+            self.satisDist = 2
         else:
             dx = getMatrixPosition()[0] - self.waypoints.get(1).x
             dy = getMatrixPosition()[1] - self.waypoints.get(1).y
-            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 2:
+            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 6:
                 createNewWaypoint()
                 newPoint = True
-
+                self.satisDist = 2
+        
+        publishWaypoints()
         # ROS info for debugging. Prints the waypoints and boolean information regarding the algorithm's status.
         rospy.loginfo("\nPoint 1 :\n" +
                       str(self.waypoints.get(1)) +
@@ -480,7 +515,7 @@ class Pathfinding_Node:
                       "\nFails     : " + str(self.fails))
 
         # Publish the waypoints to rqt for other scripts to use.
-        publishWaypoints()
+
 
 # Trigger functionality. Run this script until the keyboardInterrupt is triggered.
 if __name__ == '__main__':
