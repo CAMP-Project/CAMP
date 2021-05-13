@@ -11,37 +11,56 @@
 #include <math.h>
 using namespace std;
 
-geometry_msgs::PointStamped odomPosition;
+geometry_msgs::Point odomPosition;
 nav_msgs::OccupancyGrid odomMap;
+struct transformOffsets{
+    float x;
+    float y;
+    float theta;
+} tf;
+
+float odom2decaX(float x, float y) {
+    return x*cos(tf.theta)-y*sin(tf.theta)+tf.x;
+}
+float odom2decaY(float x, float y) {
+    return x*sin(tf.theta)+y*cos(tf.theta)+tf.y;
+}
+
+float deca2OdomX(float x, float y){
+    return (x-tf.x)*cos(tf.theta)+(y-tf.y)*sin(tf.theta);
+}
+float deca2OdomY(float x, float y){
+    return -(x-tf.x)*sin(tf.theta)+(y-tf.y)*cos(tf.theta);
+}
 
 void positionCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-    odomPosition.point = msg->pose.pose.position;
-    odomPosition.header = msg->header;
+    odomPosition = msg->pose.pose.position;
 }
 
 void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
+    //ROS_INFO("starterddning tho read the map");
     odomMap.data = msg->data;
     odomMap.header = msg->header;
     odomMap.info = msg->info;
+    //ROS_INFO("doen readin de map");
 }
 
-geometry_msgs::Point getDecaPosition(geometry_msgs::PointStamped in){
-    tf2_ros::Buffer tfBuffer;
-    tf2_ros::TransformListener tfListener(tfBuffer);
-    geometry_msgs::PointStamped out;
-    try {
-        out = tfBuffer.transform<geometry_msgs::PointStamped>(in,"deca", ros::Duration(0.1));
-    } catch (tf2::TransformException &ex) {
-        ROS_WARN("%s",ex.what());
-    }
-    return out.point;
+void transformCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
+    tf.x = msg->x;
+    tf.y = msg->y;
+    tf.theta = msg->z;
 }
 
-std::vector<signed char> getDecaMap(nav_msgs::OccupancyGrid map){
-    tf2_ros::Buffer tfBuffer;
-    tf2_ros::TransformListener tfListener(tfBuffer);
-    geometry_msgs::TransformStamped d2o;
-    geometry_msgs::PoseStamped originIn, originOut;
+geometry_msgs::Point getDecaPosition(){
+    geometry_msgs::Point out;
+    out.x = odom2decaX(odomPosition.x,odomPosition.y);
+    out.y = odom2decaY(odomPosition.x,odomPosition.y);
+    out.z = odomPosition.z;
+    return out;
+}
+
+nav_msgs::OccupancyGrid getDecaMap(){
+    nav_msgs::OccupancyGrid out;
     std::vector<signed char> dataIn, dataOut;
     int width, height, newDimensions;
     int w2,h2,d2;
@@ -49,54 +68,48 @@ std::vector<signed char> getDecaMap(nav_msgs::OccupancyGrid map){
     float resolution, theta, c, s;
 
     //Get a bunch of map data
-    originIn.header = map.header;
-    originIn.pose = map.info.origin;
-    dataIn = map.data;
-    width = map.info.width;
-    height = map.info.height;
-    resolution = map.info.resolution;
-
-    //Transform the map origin to decawave (do i even want this?)
-    // try {
-    //     originOut = tfBuffer.transform<geometry_msgs::PoseStamped>(originIn,"deca", ros::Duration(0.1));
-    // } catch (tf2::TransformException &ex) {
-    //     ROS_WARN("%s",ex.what());
-    //     continue;
-    // }
+    dataIn = odomMap.data;
+    width = odomMap.info.width;
+    height = odomMap.info.height;
+    resolution = odomMap.info.resolution;
 
     //Decide how big the new map is.
     //the old map can't be wider than it's diagonal at any rotation, so we will use that as our new width and height.
     newDimensions = sqrt(height*height+width*width);
 
     // go through each element in the new array and fill it in with something
-    //det the angle that changes decawave points to odometry
-    d2o = tfBuffer.lookupTransform("odom","deca",ros::Time(0),ros::Duration(0.1));
-    //assuming rotation is only about the z axis
-    theta = acos(d2o.transform.rotation.w)*2;
-    //other useful params
     w2 = width/2;
     h2 = height/2;
     d2 = newDimensions/2;
-    c = cos(theta);
-    s = sin(theta);
     //with maps centers alligned, take every element of our new decawave map and find what value on the odom map correlates.
     for(int m = 0; m < newDimensions; m++){
         for(int n = 0; n < newDimensions; n++){
-            mIn = h2 + c*(m-d2)-s*(n-d2);
-            nIn = w2 + s*(m-d2)+c*(n-d2);
+            mIn = int(round(deca2OdomX(m-d2,n-d2)+h2));
+            nIn = int(round(deca2OdomY(m-d2,n-d2)+w2));
             if (mIn >= 0 && mIn < height && nIn >= 0 && nIn < width) {
-                dataOut[m*newDimensions+n] = dataIn.at((mIn)*height+(nIn));
+                dataOut.push_back(dataIn.at((mIn)*height+(nIn)));
             } else {
-                dataOut[m*newDimensions+n] = -1;
+                dataOut.push_back(-1);
             }
+            //ROS_INFO("makin map %d,%d",m,n);
         }
     }
+    out.data = dataOut;
 
-    return dataOut;
-}
+    out.info.resolution = odomMap.info.resolution;
+    out.info.height = sqrt(height*height+width*width);
+    out.info.width = out.info.height;
+    out.info.map_load_time = odomMap.info.map_load_time;
+    out.info.origin.orientation = odomMap.info.origin.orientation;
+    geometry_msgs::Point position;
 
-nav_msgs::MapMetaData getDecaInfo(nav_msgs::OccupancyGrid map){
-    return map.info;
+    float tempX = (deca2OdomX(0-d2,0-d2)+h2)*out.info.resolution + odomMap.info.origin.position.x;
+    float tempY = (deca2OdomY(0-d2,0-d2)+w2)*out.info.resolution + odomMap.info.origin.position.y;
+
+    out.info.origin.position.x = odom2decaX(tempX,tempY);
+    out.info.origin.position.y = odom2decaX(tempX,tempY);
+
+    return out;
 }
 
 int main(int argc, char **argv){
@@ -107,22 +120,32 @@ int main(int argc, char **argv){
     
     ros::Subscriber position_subscriber = nh.subscribe("odom", 10, positionCallback);
     ros::Subscriber map_subscriber = nh.subscribe("map", 10, mapCallback);
-	ros::Publisher robot_publisher = nh.advertise<camp_multiagent::Robot>("robot", 10);
+    ros::Subscriber transform_subscriber = nh.subscribe("transform", 10, transformCallback);
+	//ros::Publisher robot_publisher = nh.advertise<camp_multiagent::Robot>("robot", 10);
+    ros::Publisher map_publisher = nh.advertise<nav_msgs::OccupancyGrid>("decamap",10);
+    ros::Publisher pos_publisher = nh.advertise<geometry_msgs::PointStamped>("decapos",10);
 
-    camp_multiagent::Robot robot;
+    //camp_multiagent::Robot robot;
+    nav_msgs::OccupancyGrid map;
+    geometry_msgs::PointStamped pos;
+
 
     while(ros::ok()) {
-        robot.header.stamp = ros::Time::now();
-        robot.header.frame_id = "deca";
+        pos.header.stamp = ros::Time::now();
+        pos.header.frame_id = "deca";
+        map.header.stamp = ros::Time::now();
+        map.header.frame_id = "deca";
 
-        robot.position = getDecaPosition(odomPosition);
-        robot.data = getDecaMap(odomMap);
-        robot.info = getDecaInfo(odomMap);
+        pos.point = getDecaPosition();
 
-	    robot_publisher.publish(robot);
-        // Sleep according to the loop rate above
-		loop_rate.sleep();
+        map = getDecaMap();
+
+	    map_publisher.publish(map);
+	    pos_publisher.publish(pos);
         // Check for new messages from subscribed nodes
 		ros::spinOnce();
+        // Sleep according to the loop rate above
+		loop_rate.sleep();
+        // ROS_INFO("I SUPNNNED");
 	}
 }

@@ -66,12 +66,33 @@ void MMArbitrator::sync(ros::NodeHandle n)
             debug_print("Skipping this iteration");
             std::vector<fkie_multimaster_msgs::ROSMaster> hosts = this->_fkie_service.response.masters;
             // Check all of the currents hosts to see which one disconnected
+            std::vector<int> hosts_to_remove;
             for (int i = 0; i < this->_available.size(); i++)
             {
                 // Check if all the current avialble hosts are inside the hosts list given by fkie
                 // If not found, remove it
                 if (std::find_if(hosts.begin(), hosts.end(), boost::bind(&MMArbitrator::_host_comp, this, _1, _available.at(i))) == hosts.end())
-                    this->_available.erase(this->_available.begin() + i);
+                {
+                    // Collect a list of hosts to remove
+                    hosts_to_remove.push_back(i);
+
+                    // Figure out the name the host to remove
+                    std::string host_to_remove = check_host(this->_available.at(i));
+
+                    // Shutdown and remove the odom and map subsribers for this specific host
+                    this->_sub_map.find(host_to_remove+"/odom")->second.shutdown();
+                    this->_sub_map.erase(host_to_remove+"/odom");
+
+                    this->_sub_map.find(host_to_remove+"/map")->second.shutdown();
+                    this->_sub_map.erase(host_to_remove+"/map");
+
+                    debug_print("Shutdown host: " + host_to_remove);
+                }
+
+                // Remove hosts from list of available hosts starting from the end of the list as not to change 
+                // the size of _available and screw up the indexing order
+                for(int i = hosts_to_remove.size(); i > 0; i--)
+                    this->_available.erase(this->_available.begin()+i);
             }
             return;
         }
@@ -100,16 +121,17 @@ void MMArbitrator::sync(ros::NodeHandle n)
                 this->_available.push_back(new_host);
 
                 // Check if subscribers exist for this object
-                ros::V_Subscriber::iterator ch = std::find_if(this->_subs.begin(), this->_subs.end(), boost::bind(&MMArbitrator::_sub_comp, this, _1, new_host+"/odom" ) );
-                if (ch == this->_subs.end() && new_host != this->_current_name)
+                // ros::V_Subscriber::iterator ch = std::find_if(this->_subs.begin(), this->_subs.end(), boost::bind(&MMArbitrator::_sub_comp, this, _1, new_host+"/odom" ) );
+                // if (ch == this->_subs.end() && new_host != this->_current_name)
+                if (this->_sub_map.find(new_host+"/odom") == this->_sub_map.end() || this->_sub_map.find(new_host+"/map") == this->_sub_map.end())
                 {
                     // Odom Subscriber for this host has not been setup yet. Let's set it up now.
-                    ros::Subscriber new_odom = n.subscribe<geometry_msgs::Twist>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (int)this->_subs.size(), _1));
-                    this->_subs.push_back(new_odom);
+                    ros::Subscriber new_odom = n.subscribe<geometry_msgs::Twist>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (std::string)new_host+"/odom", _1));
+                    // this->_subs.push_back(new_odom);
                     this->_sub_map.insert({new_host+"/odom", new_odom});
                     // Map Subscriber for this host has not been setup yet. Let's also set that up.
-                    ros::Subscriber new_map = n.subscribe<nav_msgs::OccupancyGrid>(new_host+"/map", 10, boost::bind(&MMArbitrator::mm_map_callback, this, (int)this->_subs.size(), _1));
-                    this->_subs.push_back(new_map);
+                    ros::Subscriber new_map = n.subscribe<nav_msgs::OccupancyGrid>(new_host+"/map", 10, boost::bind(&MMArbitrator::mm_map_callback, this, (std::string)new_host+"/map", _1));
+                    // this->_subs.push_back(new_map);
                     this->_sub_map.insert({new_host+"/map", new_map});
                 }
             }
@@ -138,7 +160,16 @@ void MMArbitrator::sync(ros::NodeHandle n)
  * @param pos Twist object
  */
 void MMArbitrator::mm_position_callback(std::string s, const geometry_msgs::Twist::ConstPtr& pos)
-{}
+{
+    std::map<std::string, geometry_msgs::Twist>::iterator it = this->_positions_map.find(s);
+    // Check if we aren't currently holding data for this map
+    if (it == this->_positions_map.end())
+        this->_positions_map.insert(std::make_pair(s,*pos.get()));
+    else
+        it->second = *pos.get();
+
+    debug_print("Updated: "+s);
+}
 
 /**
  * @brief Callback function for the local position
@@ -158,7 +189,16 @@ void MMArbitrator::_position_callback(const geometry_msgs::Twist::ConstPtr& pos)
  * @param map OccupancyGrid object
  */
 void MMArbitrator::mm_map_callback(std::string s, const nav_msgs::OccupancyGrid::ConstPtr& map)
-{}
+{
+    std::map<std::string, nav_msgs::OccupancyGrid>::iterator it = this->_maps_map.find(s);
+    // Check if we aren't currently holding data for this map
+    if (it == this->_maps_map.end())
+        this->_maps_map.insert(std::make_pair(s,*map.get()));
+    else
+        it->second = *map.get();
+
+    debug_print("Updated: "+s);
+}
 
 /**
  * @brief Callback function for the local map
@@ -217,9 +257,7 @@ bool MMArbitrator::_sub_comp(ros::Subscriber & obj, std::string name)
  * @return false If the Name of the ROSMaster is not equal to string
  */
 bool MMArbitrator::_host_comp(fkie_multimaster_msgs::ROSMaster rm, std::string s)
-{
-    return rm.name.compare(s) == 0;
-}
+{ return check_host(rm.name).compare(s) == 0; }
 
 /**
  * @brief Class Destructor
@@ -231,6 +269,13 @@ MMArbitrator::~MMArbitrator()
     this->_maps.clear();
 }
 
+/**
+ * @brief Check if a string contains only numbers
+ * 
+ * @param s Input string
+ * @return true If input string s contains only numbers
+ * @return false If input string s contains any non numbers
+ */
 bool MMArbitrator::is_number(std::string s)
 {
     for (int i = 0; i < s.length(); i++)
@@ -240,6 +285,12 @@ bool MMArbitrator::is_number(std::string s)
     return true;
 }
 
+/**
+ * @brief Shift a string of numbers to a string of characters according to the ASCII table
+ * 
+ * @param s Input string of numbers from 0-9
+ * @return std::string of characters from A-Z
+ */
 std::string MMArbitrator::shift_num_to_char(std::string s)
 {
     // lets do some magic 
@@ -256,6 +307,12 @@ void MMArbitrator::debug_print(std::string s)
     #endif
 }
 
+/**
+ * @brief Format the input string to a ROS compatible form and return it
+ * 
+ * @param s Input std::String
+ * @return std::string Converted to a ROS compatible name for topics
+ */
 std::string MMArbitrator::check_host(std::string s)
 {
     debug_print("Checkhost: "+s);

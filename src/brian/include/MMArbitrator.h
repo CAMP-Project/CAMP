@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <utility>
 #include <boost/bind.hpp>
 
 // Development Libraries from within this project as defined in CMakeLists.txt
@@ -78,12 +79,14 @@ private:
 
     // List of positions of all hosts on the network
     std::vector<geometry_msgs::Twist> _positions;
+    // TODO: Populate std::map with data
     std::map<std::string, geometry_msgs::Twist> _positions_map;
 
     // List of maps of all hosts on the network 
     std::vector<nav_msgs::OccupancyGrid> _maps;
 
     // What a name ay?
+    // TODO: Populate std::map with data
     std::map<std::string, nav_msgs::OccupancyGrid> _maps_map;
 
     // Information of the current host that is running this code
@@ -93,34 +96,33 @@ private:
     geometry_msgs::Twist _my_odom;
     nav_msgs::OccupancyGrid _my_map;
 
-    
+    // TODO: Update callback functions to map host name to data
 
     // Odometry sub callback for multimaster
-
     void mm_position_callback(std::string, const geometry_msgs::Twist::ConstPtr&);
 
     // Odometry sub callback for local odometry
-
     void _position_callback(const geometry_msgs::Twist::ConstPtr& pos);
 
     // Map sub callback for multimaster
-
     void mm_map_callback(std::string, const nav_msgs::OccupancyGrid::ConstPtr&);
 
     // Map sub callback for local map
-
     void _map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map);
 
     // MasterState callback
-
     void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms);
 
+    // Compare a subscriber object to a string
     bool _sub_comp(ros::Subscriber & obj, std::string name);
 
+    // Compare a ROSMaster object to a string
     bool _host_comp(fkie_multimaster_msgs::ROSMaster, std::string);
 
+    // Check if a string contains numbers
     bool is_number(std::string);
 
+    // Shift numbers to characters and return as string
     std::string shift_num_to_char(std::string);
 
     void debug_print(std::string);
