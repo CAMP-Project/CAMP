@@ -107,7 +107,7 @@ nav_msgs::OccupancyGrid getDecaMap(){
     float tempY = (deca2OdomY(0-d2,0-d2)+w2)*out.info.resolution + odomMap.info.origin.position.y;
 
     out.info.origin.position.x = odom2decaX(tempX,tempY);
-    out.info.origin.position.y = odom2decaX(tempX,tempY);
+    out.info.origin.position.y = odom2decaY(tempX,tempY);
 
     return out;
 }
