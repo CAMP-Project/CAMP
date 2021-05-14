@@ -23,6 +23,7 @@ using namespace std;
 const float SCALE = 2;
 const float BURGER_MAX_LIN_VEL = 0.2/SCALE; // 0.2 m/s
 const float BURGER_MAX_ANG_VEL = 1.5708/SCALE; // pi/2 rad/s or 90 deg/s
+const float STOP_AT_POINT = 0.1/SCALE;
 
 //Movement Vars
 float x_vel, z_ang_vel;
@@ -156,6 +157,11 @@ void pointToPoint() {
     if(z_ang_vel < -BURGER_MAX_ANG_VEL) z_ang_vel = -BURGER_MAX_ANG_VEL;
     //x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI));
     x_vel = BURGER_MAX_LIN_VEL*(0.2+0.8*(1-abs(head_error)/PI)); //this one should turn tighter. 
+    if(STOP_AT_POINT) {
+        //stop if at a final point
+        x_vel = 0; 
+        z_ang_vel = 0;
+    }
     last_x = odom_x;
     last_y = odom_y;
     ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nMode:   [%d]\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,cmd,x_vel,z_ang_vel);
