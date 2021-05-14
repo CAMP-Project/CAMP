@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="camp_pathfinding" type="pathfinding_test_environment.py" name="pathfinding" output="screen" />
+  
+  
+</launch>
