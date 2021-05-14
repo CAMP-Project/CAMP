@@ -251,9 +251,10 @@ class Pathfinding_Node:
                            7 : [[x_pos - dist1, x_pos - dist2, x_pos - dist3, x_pos - dist4],
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
+            rayLimit = 40
             if x_pos > 0 and y_pos > 0:
                 # Calculate entropy sums.
-                for k in range(1, 20):
+                for k in range(1, rayLimit):
                     # Check down-left.
                     if (y_pos - k) > 0 and (x_pos - k) > 0:
                         entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
@@ -495,6 +496,8 @@ class Pathfinding_Node:
         if obstacleCheck():
             resetWaypoints()
             self.reset = True
+        elif diff > 100:
+            resetWaypoints()
         else:
             if diff < 3 and self.createPoint == False:
                 createNewWaypoint()
