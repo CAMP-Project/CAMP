@@ -219,7 +219,7 @@ class Pathfinding_Node:
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
             N = self.mapActual.info.height
 
-            dist1 = 10
+            dist1 = 6
             dist2 = 2 * dist1
             dist3 = 3 * dist1
             dist4 = 4 * dist1
@@ -253,49 +253,49 @@ class Pathfinding_Node:
                 # Calculate entropy sums.
                 for k in range(1, 20):
                     # Check down-left.
-                    if (y_pos - k) > 0 and (x_pos - k) > 0:
+                    if (y_pos - k) > 0 and (x_pos - k) > 0 and (x_pos - k) < self.mapActual.info.width and (y_pos - k) < self.mapActual.info.height:
                         entropyDirections[0] = entropyDirections[0] + map(x_pos - k, y_pos - k)
                     else:
                         entropyDirections[0] = entropyDirections[0] + 20
                     
                     # Check down.
-                    if (y_pos - k) > 0:
+                    if (y_pos - k) > 0and (x_pos) > 0 and (x_pos) < self.mapActual.info.width and (y_pos - k) < self.mapActual.info.height:
                         entropyDirections[1] = entropyDirections[1] + map(x_pos, y_pos - k)
                     else:
                         entropyDirections[1] = entropyDirections[1] + 20
 
                     # Check down-right.
-                    if (y_pos - k) > 0 and (x_pos + k) > 0:
+                    if (y_pos - k) > 0 and (x_pos + k) > 0 and (x_pos + k) < self.mapActual.info.width and (y_pos - k) < self.mapActual.info.height:
                         entropyDirections[2] = entropyDirections[2] + map(x_pos + k, y_pos - k)
                     else:
                         entropyDirections[2] = entropyDirections[2] + 20
 
                     # Check right.
-                    if (x_pos + k) > 0:
+                    if (x_pos + k) > 0 and (x_pos + k) < self.mapActual.info.width and (y_pos) > 0 and (y_pos) < self.mapActual.info.height:
                         entropyDirections[3] = entropyDirections[3] + map(x_pos + k, y_pos)
                     else:
                         entropyDirections[3] = entropyDirections[3] + 20
 
                     # Check up-right.
-                    if (y_pos + k) > 0 and (x_pos + k) > 0:
+                    if (y_pos + k) > 0 and (x_pos + k) > 0 and (x_pos + k) < self.mapActual.info.width and (y_pos+k) < self.mapActual.info.height:
                         entropyDirections[4] = entropyDirections[4] + map(x_pos + k, y_pos + k)
                     else:
                         entropyDirections[4] = entropyDirections[4] + 20
 
                     # Check up.
-                    if (y_pos + k) > 0:
+                    if (y_pos + k) > 0 and (x_pos) > 0 and (x_pos) < self.mapActual.info.width and (y_pos+k) < self.mapActual.info.height:
                         entropyDirections[5] = entropyDirections[5] + map(x_pos, y_pos + k)
                     else:
                         entropyDirections[5] = entropyDirections[5] + 20
 
                     # Check up-left.
-                    if (y_pos + k) > 0 and (x_pos - k) > 0:
+                    if (y_pos + k) > 0 and (x_pos - k) > 0 and (x_pos - k) < self.mapActual.info.width and (y_pos + k) < self.mapActual.info.height:
                         entropyDirections[6] = entropyDirections[6] + map(x_pos - k, y_pos + k)
                     else:
                         entropyDirections[6] = entropyDirections[6] + 20
 
                     # Check left.
-                    if (x_pos - k) > 0:
+                    if (x_pos - k) > 0 and (y_pos) > 0 and (x_pos - k) < self.mapActual.info.width and (y_pos) < self.mapActual.info.height:
                         entropyDirections[7] = entropyDirections[7] + map(x_pos - k, y_pos)
                     else:
                         entropyDirections[7] = entropyDirections[7] + 20
@@ -327,7 +327,7 @@ class Pathfinding_Node:
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
             
             # The amount of squares to advance.
-            d = 10
+            d = 6
 
             # Traversal movements in each direction. Premade depending on the direction to be calculated.
             advancementMap = {
@@ -360,18 +360,18 @@ class Pathfinding_Node:
 
             while isObstacle == 1:
                 inc = 0
-                test = 0
+                #test = 0
                 for x in entropyDirections:
                     rospy.loginfo(str(inc)+": " +str(x))
                     inc = inc + 1
-                    test = test + x
+                    #test = test + x
                 # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
                 # The entropy tells the robot where the "highest reward" is.
                 direction = entropyDirections.index(max(entropyDirections))              
                 rospy.loginfo("try:"+str(direction))
 
-                if test == 0:
-                    exit()
+                #if test == 0:
+                #    exit()
 
                 # Get the number of squares to increase in either direction depending on the calculated direction.
                 differential = advancementMap.get(direction)
@@ -431,10 +431,12 @@ class Pathfinding_Node:
 
                 # Track number of fails.
                 self.fails = self.fails + 1
+                rospy.loginfo("Fails: " + str(self.fails))
 
                 if self.fails > 7:
                     resetWaypoints()
                     self.fails = 0
+                    isObstacle = 0
 
 
 
@@ -519,7 +521,7 @@ class Pathfinding_Node:
         else:
             dx = getMatrixPosition()[0] - self.waypoints.get(1).x
             dy = getMatrixPosition()[1] - self.waypoints.get(1).y
-            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 6:
+            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 3:
                 createNewWaypoint()
                 newPoint = True
                 self.satisDist = 2
