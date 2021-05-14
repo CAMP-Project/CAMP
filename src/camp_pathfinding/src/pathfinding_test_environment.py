@@ -99,6 +99,8 @@ class Pathfinding_Node:
         # Property which holds on to the satisfactory distance for when a new point should be generated.
         self.satisDist = 1
 
+        self.createPoint = False
+
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -182,7 +184,7 @@ class Pathfinding_Node:
             roboPosY = getRoboMapPosition().y
             roboPos = PointStamped()
             roboPos.header.stamp = rospy.Time()
-            roboPos.header.frame_id = "map"
+            roboPos.header.frame_id = "odom"
             roboPos.point = Point(roboPosX, roboPosY, 1)
 
             self.robot_publisher.publish(roboPos)
@@ -200,7 +202,7 @@ class Pathfinding_Node:
             result_viz = PointStamped()
             result_viz.point = result
             result_viz.header.stamp = rospy.Time()
-            result_viz.header.frame_id = "map"
+            result_viz.header.frame_id = "odom"
             return result_viz
 
 
@@ -219,7 +221,7 @@ class Pathfinding_Node:
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
             N = self.mapActual.info.height
 
-            dist1 = 10
+            dist1 = 6
             dist2 = 2 * dist1
             dist3 = 3 * dist1
             dist4 = 4 * dist1
@@ -316,6 +318,7 @@ class Pathfinding_Node:
         # This method will create a new waypoint once the robot is within a certain distance
         # to waypoint 1.
         def createNewWaypoint():
+
             # Get the position of the third waypoint.            
             point_x = self.waypoints.get(4).x
             point_y = self.waypoints.get(4).y
@@ -327,7 +330,7 @@ class Pathfinding_Node:
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
             
             # The amount of squares to advance.
-            d = 10
+            d = 6
 
             # Traversal movements in each direction. Premade depending on the direction to be calculated.
             advancementMap = {
@@ -355,9 +358,6 @@ class Pathfinding_Node:
             # It is assumed to be true that there is an obstacle between the points.
             isObstacle = 1
 
-            # Track number of path fails.
-            self.fails = 0
-
             while isObstacle == 1:
                 # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
                 # The entropy tells the robot where the "highest reward" is.
@@ -374,7 +374,7 @@ class Pathfinding_Node:
                 # Check for duplicate points.
                 duplicates = 0
                 for i in range(1, 3):
-                    if end.x + dx == self.waypoints.get(i).x or end.y + dx == self.waypoints.get(i).y:
+                    if end.x + dx == self.waypoints.get(i).x and end.y + dy == self.waypoints.get(i).y:
                         duplicates = duplicates + 1
 
                 # Connect the 3rd point and the theoretical last point.
@@ -411,6 +411,7 @@ class Pathfinding_Node:
                 if self.fails > 7:
                     resetWaypoints()
                     self.fails = 0
+                    isObstacle = 0
 
 
 
@@ -488,19 +489,21 @@ class Pathfinding_Node:
         self.reset = False
         # First, check for obstacles. If an obstacle is found between the robot and it's target, reset the path.
         # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
+        dx = getMatrixPosition()[0] - self.waypoints.get(1).x
+        dy = getMatrixPosition()[1] - self.waypoints.get(1).y
+        diff = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
         if obstacleCheck():
             resetWaypoints()
             self.reset = True
-            self.satisDist = 2
         else:
-            dx = getMatrixPosition()[0] - self.waypoints.get(1).x
-            dy = getMatrixPosition()[1] - self.waypoints.get(1).y
-            if (math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))) < 6:
+            if diff < 3 and self.createPoint == False:
                 createNewWaypoint()
-                newPoint = True
-                self.satisDist = 2
+                self.newPoint = True
+            if newPoint == True and diff > 6:
+                self.newPoint = False 
         
         publishWaypoints()
+        robot = getMatrixPosition()
         # ROS info for debugging. Prints the waypoints and boolean information regarding the algorithm's status.
         rospy.loginfo("\nPoint 1 :\n" +
                       str(self.waypoints.get(1)) +
@@ -510,6 +513,9 @@ class Pathfinding_Node:
                       str(self.waypoints.get(3)) +
                       "\nPoint 4 :\n" +
                       str(self.waypoints.get(4)) +
+                      "\nRobot   :" +
+                      "\nx: " + str(robot[0]) +
+                      "\ny: " + str(robot[1]) +  
                       "\nReset     : " + str(self.reset) + 
                       "\nCalculate : " + str(newPoint) + 
                       "\nFails     : " + str(self.fails))
