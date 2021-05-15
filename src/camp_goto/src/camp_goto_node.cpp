@@ -12,23 +12,34 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
 #include <nav_msgs/Odometry.h>
+#include "camp_goto/Cmd.h"
 #include <vector>
 #include <math.h>
 #define PI 3.14159265
 using namespace std;
 //constants from teleop_key
-//const int BURGER_MAX_LIN_VEL = 0.22;
-//const int BURGER_MAX_ANG_VEL = 2.84;
+const float BURGER_MAX_LIN_VEL = 0.22;
+const float BURGER_MAX_ANG_VEL = 2.84;
 // somewhat safer constants because i am scared
-const float SCALE = 2;
-const float BURGER_MAX_LIN_VEL = 0.2/SCALE; // 0.2 m/s
-const float BURGER_MAX_ANG_VEL = 1.5708/SCALE; // pi/2 rad/s or 90 deg/s
-const float STOP_AT_POINT = 0.1/SCALE;
+//const float BURGER_MAX_LIN_VEL = 0.2; // 0.2 m/s
+//const float BURGER_MAX_ANG_VEL = 1.5708; // pi/2 rad/s or 90 deg/s
+
+struct command{
+    bool stop = true;
+    bool is_relative = false;
+    bool is_deca = false;
+} cmd;
+
+struct parameters{
+    float speed = 0.45;
+    float dest_stop = 0.1;
+    float emg_stop = 0.15;
+    int emeg_stop_angle = 27;
+} param;
 
 //Movement Vars
 float x_vel, z_ang_vel;
 float last_x=0, last_y=0;
-int cmd = 0;
 float go_x, go_y, go_distance, heading;
 //Scan
 float angle_min, angle_max, angle_increment, scan_time, range_min, range_max;
@@ -88,29 +99,43 @@ void offsetCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
     
 }
 // This function determines the point the robot will travel to next. It runs each time the talker sends a point.
-void updateLongPos(const geometry_msgs::Point::ConstPtr& msg){
+void updateLongPos(const camp_goto::Cmd::ConstPtr& msg){
     //ROS_INFO("grabbing destination");
-    cmd = msg->z;
-    if(cmd == 1 || cmd ==2){
-        go_x = msg->x;
-        go_y = msg->y;
-        if(cmd == 2){
+    cmd.stop = msg->stop;
+    cmd.is_relative = msg->is_relative;
+    cmd.is_deca = msg->is_deca;
+
+    if(cmd.is_deca == false){
+        go_x = msg->destination.x;
+        go_y = msg->destination.y;
+        if(cmd.is_relative == true){
             //relative mode
             go_x += odom_x;
             go_y += odom_y;
         }
-    } else if(cmd == 3){
+    } else {
         //convert decawave to odometry
-        decagoal_x = msg->x;
-        decagoal_y = msg->y;
+        decagoal_x = msg->destination.x;
+        decagoal_y = msg->destination.y;
+        if(cmd.is_relative == true) {
+            decagoal_x += deca_x;
+            decagoal_y += deca_y;
+        }
         go_x = deca2OdomX(decagoal_x,decagoal_y);
         go_y = deca2OdomY(decagoal_x,decagoal_y);
-    } else if(cmd == 4){
-        //convert decawave to odometry (relative to current decawave location)
-        decagoal_x = deca_x+msg->x;
-        decagoal_y = deca_y+msg->y;
-        go_x = deca2OdomX(decagoal_x,decagoal_y);
-        go_y = deca2OdomY(decagoal_x,decagoal_y);
+    }
+
+    if (msg->speed >= 0.0 && msg->speed <= 1.0){
+        param.speed = msg->speed;
+    }
+    if (msg->destination_stop_distance >= 0.0){
+        param.dest_stop = msg->destination_stop_distance;
+    }
+    if (msg->emergency_stop_distance >= 0.0){
+        param.emg_stop =  msg->emergency_stop_distance;
+    }
+    if (msg->emergency_stop_angle >= 0 && msg->emergency_stop_angle <= 180){
+        param.emeg_stop_angle = msg->emergency_stop_angle;
     }
 }
 
@@ -121,11 +146,11 @@ bool somethingInFront() {
         // Find how close the closest object is (55 front scans)
         if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
         else closest_front_object = 500;
-        for(int i = 1; i < 27; i++) {
+        for(int i = 1; i < param.emeg_stop_angle; i++) {
             if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
             if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
         }
-        if(closest_front_object<0.15) {
+        if(closest_front_object < param.emg_stop) {
             return true;
         } else {
             return false;
@@ -152,12 +177,12 @@ void pointToPoint() {
     //ROS_INFO("\ndes: %f\nhed: %f\nerr: %f",desired_heading,heading,head_error);
     
     //TODO: implement better control
-    z_ang_vel = 2.0/SCALE * head_error; // 2 seems to be a good Kp in matlab sims
-    if(z_ang_vel > BURGER_MAX_ANG_VEL) z_ang_vel = BURGER_MAX_ANG_VEL;
-    if(z_ang_vel < -BURGER_MAX_ANG_VEL) z_ang_vel = -BURGER_MAX_ANG_VEL;
+    z_ang_vel = 2.0*param.speed * head_error; // 2 seems to be a good Kp in matlab sims
+    if(z_ang_vel > BURGER_MAX_ANG_VEL*param.speed) z_ang_vel = BURGER_MAX_ANG_VEL*param.speed;
+    if(z_ang_vel < -BURGER_MAX_ANG_VEL*param.speed) z_ang_vel = -BURGER_MAX_ANG_VEL*param.speed;
     //x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI));
-    x_vel = BURGER_MAX_LIN_VEL*(0.2+0.8*(1-abs(head_error)/PI)); //this one should turn tighter. 
-    if(STOP_AT_POINT) {
+    x_vel = BURGER_MAX_LIN_VEL*param.speed*(0.2+0.8*(1-abs(head_error)/PI)); //this one should turn tighter. 
+    if(go_distance < param.dest_stop) {
         //stop if at a final point
         x_vel = 0; 
         z_ang_vel = 0;
@@ -170,7 +195,7 @@ void pointToPoint() {
 // This is the main function.
 // It contains some code to run once and a while loop for repeating actions.
 int main(int argc, char **argv){
-	ros::init(argc, argv, "brian");
+	ros::init(argc, argv, "camp_goto");
 	ros::NodeHandle nh;	
 	geometry_msgs::Twist vel_msg; 
 	ros::Rate loop_rate(10);
@@ -179,13 +204,13 @@ int main(int argc, char **argv){
     ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, odomCallback);
     ros::Subscriber tag_subscriber = nh.subscribe("filtered", 10, tagCallback);
     ros::Subscriber offset_subscriber = nh.subscribe("transform", 10, offsetCallback);
-    ros::Subscriber go_pos_subscriber = nh.subscribe("go_pos", 10, updateLongPos);
+    ros::Subscriber go_pos_subscriber = nh.subscribe("go_cmd", 10, updateLongPos);
 	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     	
 	while(ros::ok()) {
         //Determine motor instructions from current point and the go vars
         pointToPoint();
-        if(cmd == 0 || somethingInFront()){
+        if(cmd.stop = true || somethingInFront()){
             x_vel = 0; 
             z_ang_vel = 0;
         }

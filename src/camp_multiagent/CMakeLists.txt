@@ -79,7 +79,6 @@ generate_messages(
   geometry_msgs
   sensor_msgs 
   nav_msgs
-  std_msgs
   camp_multiagent
 )
 
