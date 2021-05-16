@@ -92,7 +92,7 @@ void offsetCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
     ty = msg->y;
     theta = msg->z;
     // update goal if navigating via decawave.
-    if(cmd == 3 || cmd == 4){
+    if(cmd.is_deca == true){
         go_x = deca2OdomX(decagoal_x,decagoal_y);
         go_y = deca2OdomY(decagoal_x,decagoal_y);
     }
