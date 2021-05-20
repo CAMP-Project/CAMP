@@ -1,10 +1,5 @@
 <?xml version="1.0"?>
 
 <launch>
-    <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
-    <include file="src/dwm1001_ros/launch/dwm1001.launch" />
-    <include file="$(find kalman_filter)/launch/EKF.launch" />
-
-    <node pkg="camp_goto" type="camp_goto_node" name="camp_goto_node" output="screen"/>
-
+    <node pkg="camp_goto" type="node" name="camp_goto_node" output="log"/>
 </launch>

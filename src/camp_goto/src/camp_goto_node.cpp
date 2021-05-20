@@ -210,7 +210,7 @@ int main(int argc, char **argv){
 	while(ros::ok()) {
         //Determine motor instructions from current point and the go vars
         pointToPoint();
-        if(cmd.stop = true || somethingInFront()){
+        if(cmd.stop == true || somethingInFront()){
             x_vel = 0; 
             z_ang_vel = 0;
         }

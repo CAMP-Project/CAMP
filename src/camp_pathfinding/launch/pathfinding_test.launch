@@ -2,7 +2,7 @@
 
 <launch>
 
-  <node pkg="camp_pathfinding" type="pathfinding_test_environment.py" name="pathfinding" output="screen" />
+  <node pkg="camp_pathfinding" type="pathfinding_test_environment.py" name="pathfinding" output="log" />
   
   
 </launch>
