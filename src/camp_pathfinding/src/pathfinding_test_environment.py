@@ -33,6 +33,7 @@
 
 # Package imports.
 import math
+from geometry_msgs import msg
 import roslib
 import numpy as np;
 import rospy
@@ -42,6 +43,8 @@ roslib.load_manifest('rospy')
 from geometry_msgs.msg import Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
+from camp_goto.msg import Cmd
+
 
 class Pathfinding_Node:
 
@@ -62,7 +65,7 @@ class Pathfinding_Node:
         rospy.Subscriber('/odom', Odometry, self.updateOdom)
 
         # This will publish the computed waypoint information.
-        self.point_publisher = rospy.Publisher('go_pos', Point, queue_size = 10)
+        self.point_publisher = rospy.Publisher('go_cmd', Cmd, queue_size = 10)
         
         # Instantiate publlishers for displaying the waypoints in rviz. This will be invaluable for debugging.
         self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
@@ -171,8 +174,21 @@ class Pathfinding_Node:
             # a PointStamped. We want this published in a format that camp_goto to read: a Point.
             x = (0.05 * waypoint.x) + self.mapActual.info.origin.position.x
             y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
-            result = Point(x, y, waypoint.z)
-            self.point_publisher.publish(result)
+            goTo = Point(x, y, waypoint.z)
+
+            command = Cmd()
+            command.destination = goTo
+            command.stop = False
+            command.is_relative = False
+            command.is_deca = False
+
+            command.speed = 0.45
+
+            command.destination_stop_distance = 0
+            command.emergency_stop_distance = 0.15
+            command.emergency_stop_angle = 30
+
+            self.point_publisher.publish(command)
 
             # Publish the points in rviz.
             self.viz_publisher_1.publish(getPointInMeters(1))
@@ -329,7 +345,7 @@ class Pathfinding_Node:
 
             # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
-            
+
             # The amount of squares to advance.
             d = 6
 
@@ -360,9 +376,17 @@ class Pathfinding_Node:
             isObstacle = 1
 
             while isObstacle == 1:
+                inc = 0
+                #test = 0
+                for x in entropyDirections:
+                    rospy.loginfo(str(inc)+": " +str(x))
+                    inc = inc + 1
+
                 # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
                 # The entropy tells the robot where the "highest reward" is.
-                direction = entropyDirections.index(max(entropyDirections))              
+                direction = entropyDirections.index(max(entropyDirections))   
+
+                rospy.loginfo("try:"+str(direction))           
 
                 # Get the number of squares to increase in either direction depending on the calculated direction.
                 differential = advancementMap.get(direction)
@@ -388,16 +412,19 @@ class Pathfinding_Node:
                 # sum in that direction to 0. This will prevent that direction from being searched again since the 
                 # algorithm checks for the maximum entropy value.
                 if yMin < 2 or yMax > N - 1 or xMin < 2 or xMax > N - 1 or duplicates > 0:
+                    if duplicates > 0:
+                        rospy.loginfo("duplicates > 0 (" + str(duplicates) + ")")
                     entropyDirections[direction] = 0
                 else:
                     maximum = 0
                     for i in range(xMin - 1, xMax + 1):
                         for j in range(yMin - 1, yMax + 1):
-                            if entropy(i, j) > maximum:
-                                maximum = entropy(i, j)
+                            if map(i, j) > maximum:
+                                maximum = map(i, j)
 
-                    if maximum > 0.7:
+                    if maximum > 70:
                         entropyDirections[direction] = 0
+                        rospy.loginfo("maximum > 0.7 (" + str(maximum) + ")")
                     else:
                         self.waypoints[1] = self.waypoints[2]
                         self.waypoints[2] = self.waypoints[3]
@@ -408,6 +435,7 @@ class Pathfinding_Node:
 
                 # Track number of fails.
                 self.fails = self.fails + 1
+                rospy.loginfo("Fails: " + str(self.fails))
 
                 if self.fails > 7:
                     resetWaypoints()
@@ -435,7 +463,7 @@ class Pathfinding_Node:
             # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
             # to regions that have not been explored.
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
-                return 100
+                return 50
             # Return.
             else:
                 return self.mapActual.data[x + (self.mapActual.info.width * y)]
@@ -443,13 +471,15 @@ class Pathfinding_Node:
         # Method to calculate the entropy at a given map index.
         def entropy(x, y):
             # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
-            p = self.mapActual.data[x + (self.mapActual.info.width * y)] / 102 
+            p = self.mapActual.data[x + (self.mapActual.info.width * y)]
             
             # If the value of the probability at the given index is negative, replace it with 0.5.
             # Note: this does not replace the value of the probability value in the OccupancyMap.
             if p < 0:
                 p = 0.5
             
+            p = p / 102
+
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
 
