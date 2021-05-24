@@ -181,7 +181,7 @@ void pointToPoint() {
     if(z_ang_vel > BURGER_MAX_ANG_VEL*param.speed) z_ang_vel = BURGER_MAX_ANG_VEL*param.speed;
     if(z_ang_vel < -BURGER_MAX_ANG_VEL*param.speed) z_ang_vel = -BURGER_MAX_ANG_VEL*param.speed;
     //x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI));
-    x_vel = BURGER_MAX_LIN_VEL*param.speed*(0.2+0.8*(1-abs(head_error)/PI)); //this one should turn tighter. 
+    x_vel = BURGER_MAX_LIN_VEL*param.speed*(-0.1+1.1*(1-abs(head_error)/PI)); //this one should turn tighter. 
     if(go_distance < param.dest_stop) {
         //stop if at a final point
         x_vel = 0; 

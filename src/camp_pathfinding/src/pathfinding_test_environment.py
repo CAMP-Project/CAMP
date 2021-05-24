@@ -104,6 +104,8 @@ class Pathfinding_Node:
 
         self.createPoint = False
 
+        self.entropyVector = [0, 0, 0, 0, 0, 0, 0, 0]
+
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -320,7 +322,17 @@ class Pathfinding_Node:
                         entropyDirections[7] = entropyDirections[7] + 20
                 
             # Find the direction of minimum entropy.
-            direction = entropyDirections.index(min(entropyDirections))
+            direction = None
+            maxVal = 1000
+            minVal = 500
+            self.entropyVector = entropyDirections
+            for value in entropyDirections:
+                if value < maxVal and value > minVal:
+                    direction = entropyDirections.index(value)
+                    break
+            
+            if direction is None:
+                direction = entropyDirections.index(min(entropyDirections))
 
             # Select the path from the waypointMap above based on the calculated direction.
             path = waypointMap.get(direction)
@@ -508,7 +520,7 @@ class Pathfinding_Node:
                         closestFrontObject = ranges[360 - i]
                 
                 # Threshold distance. *This double is in meters.
-                if closestFrontObject < 0.2:
+                if closestFrontObject < 0.5:
                     return True
                 else:
                     return False
@@ -546,12 +558,13 @@ class Pathfinding_Node:
                       str(self.waypoints.get(3)) +
                       "\nPoint 4 :\n" +
                       str(self.waypoints.get(4)) +
-                      "\nRobot   :" +
-                      "\nx: " + str(robot[0]) +
-                      "\ny: " + str(robot[1]) +  
-                      "\nReset     : " + str(self.reset) + 
-                      "\nCalculate : " + str(newPoint) + 
-                      "\nFails     : " + str(self.fails))
+                      "\nRobot:" +
+                      "\nx            : " + str(robot[0]) +
+                      "\ny            : " + str(robot[1]) +  
+                      "\nReset        : " + str(self.reset) + 
+                      "\nCalculate    : " + str(newPoint) + 
+                      "\nFails        : " + str(self.fails) + 
+                      "\nEntropy Array: " + str(self.entropyVector))
 
         # Publish the waypoints to rqt for other scripts to use.
 
