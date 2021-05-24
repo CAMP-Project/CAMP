@@ -182,7 +182,7 @@ class Pathfinding_Node:
             command.is_relative = False
             command.is_deca = False
 
-            command.speed = 0.45
+            command.speed = 0.75
 
             command.destination_stop_distance = 0
             command.emergency_stop_distance = 0.15

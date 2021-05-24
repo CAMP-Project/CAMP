@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
 
 <launch>
-    <node pkg="camp_goto" type="node" name="camp_goto_node" output="log"/>
+    <node pkg="camp_goto" type="camp_goto_node" name="node" output="log"/>
 </launch>
