@@ -72,6 +72,7 @@ class Pathfinding_Node:
         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
+        self.region_publisher = rospy.Publisher('region', PointStamped, queue_size = 10)
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
         
 
@@ -184,7 +185,7 @@ class Pathfinding_Node:
             command.is_relative = False
             command.is_deca = False
 
-            command.speed = 0.75
+            command.speed = 0.43
 
             command.destination_stop_distance = 0
             command.emergency_stop_distance = 0.15
@@ -274,14 +275,72 @@ class Pathfinding_Node:
             rayLimit = 40
             offset = 30
             power = 2
-            # Calculate entropy sums.
-            for k in range(1, rayLimit):
-                for d in range(0,7):
+            if x_pos > 0 and y_pos > 0:
+                # Calculate entropy sums.
+                for k in range(1, rayLimit):
                     # Check down-left.
-                    if (x_pos + checkSigns[d][1] * k) > 0 and (x_pos + checkSigns[d][1] * k) < self.mapActual.info.width and (y_pos + checkSigns[d][2] * k) > 0 and (y_pos + checkSigns[d][2] * k) < self.mapActual.info.height and foundWalls[d] is False:
-                        entropyDirections[d] = entropyDirections[d] + pow(map(x_pos + checkSigns[d][1] * k, y_pos + checkSigns[d][2] * k) - offset, power)/k
+                    if (y_pos - k) > 0 and (x_pos - k) > 0 and foundWalls[0] is False:
+                        if map(x_pos - k, y_pos - k) > 90:
+                            foundWalls[0] = True
+                        entropyDirections[0] = entropyDirections[0] + pow(map(x_pos - k, y_pos - k) - offset, power)/k
                     else:
-                        entropyDirections[d] = entropyDirections[d] + pow(100-offset,power)/k
+                        entropyDirections[0] = entropyDirections[0] + 9999
+
+                    # Check down.
+                    if (y_pos - k) > 0 and foundWalls[1] is False:
+                        if map(x_pos, y_pos - k) > 90:
+                            foundWalls[1] = True
+                        entropyDirections[1] = entropyDirections[1] + pow(map(x_pos, y_pos - k) - offset, power)/k
+                    else:
+                        entropyDirections[1] = entropyDirections[1] + 9999
+
+                    # Check down-right.
+                    if (y_pos - k) > 0 and (x_pos + k) > 0 and foundWalls[2] is False:
+                        if map(x_pos + k, y_pos - k) > 90:
+                            foundWalls[2] = True
+                        entropyDirections[2] = entropyDirections[2] + pow(map(x_pos + k, y_pos - k) - offset, power)/k
+                    else:
+                        entropyDirections[2] = entropyDirections[2] + 9999
+
+                    # Check right.
+                    if (x_pos + k) > 0 and foundWalls[3] is False:
+                        if map(x_pos + k, y_pos) > 90:
+                            foundWalls[3] = True
+                        entropyDirections[3] = entropyDirections[3] + pow(map(x_pos + k, y_pos) - offset, power)/k
+                    else:
+                        entropyDirections[3] = entropyDirections[3] + 9999
+
+                    # Check up-right.
+                    if (y_pos + k) > 0 and (x_pos + k) > 0 and foundWalls[4] is False:
+                        if map(x_pos + k, y_pos + k) > 90:
+                            foundWalls[4] = True
+                        entropyDirections[4] = entropyDirections[4] + pow(map(x_pos + k, y_pos + k) - offset, power)/k
+                    else:
+                        entropyDirections[4] = entropyDirections[4] + 9999
+
+                    # Check up.
+                    if (y_pos + k) > 0 and foundWalls[5] is False:
+                        if map(x_pos, y_pos + k) > 90:
+                            foundWalls[5] = True
+                        entropyDirections[5] = entropyDirections[5] + pow(map(x_pos, y_pos + k) - offset, power)/k
+                    else:
+                        entropyDirections[5] = entropyDirections[5] + 9999
+
+                    # Check up-left.
+                    if (y_pos + k) > 0 and (x_pos - k) > 0 and foundWalls[6] is False:
+                        if map(x_pos - k, y_pos + k) > 90:
+                            foundWalls[6] = True
+                        entropyDirections[6] = entropyDirections[6] + pow(map(x_pos - k, y_pos + k) - offset, power)/k
+                    else:
+                        entropyDirections[6] = entropyDirections[6] + 9999
+
+                    # Check left.
+                    if (x_pos - k) > 0 and foundWalls[7] is False:
+                        if map(x_pos - k, y_pos) > 90:
+                            foundWalls[7] = True
+                        entropyDirections[7] = entropyDirections[7] + pow(map(x_pos - k, y_pos) - offset, power)/k
+                    else:
+                        entropyDirections[7] = entropyDirections[7] + 9999
                 
             # Find the direction of minimum entropy.
             direction = None
@@ -336,14 +395,14 @@ class Pathfinding_Node:
             }
 
             # Calculate entropy squares in 8 different directions around the robot. 
-            entropyDirections[0] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 15, point_y - 5)
-            entropyDirections[1] = grabEntropySquare(point_x - 5, point_x + 5, point_y - 15, point_y - 5)
-            entropyDirections[2] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 15, point_y - 5)
-            entropyDirections[3] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 5, point_y + 5)
-            entropyDirections[4] = grabEntropySquare(point_x + 5, point_x + 15, point_y + 5, point_y + 15)
-            entropyDirections[5] = grabEntropySquare(point_x - 5, point_x + 5, point_y + 5, point_y + 15)
-            entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y + 5, point_y + 15)
-            entropyDirections[7] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5)
+            entropyDirections[0] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 15, point_y - 5) + 0.1*grabEntropySquare(point_x - 25, point_x - 15, point_y - 25, point_y - 15)
+            entropyDirections[1] = grabEntropySquare(point_x - 5, point_x + 5, point_y - 15, point_y - 5) + 0.1*grabEntropySquare(point_x - 5, point_x + 5, point_y - 25, point_y - 15)
+            entropyDirections[2] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 15, point_y - 5) + 0.1*grabEntropySquare(point_x + 15, point_x + 25, point_y - 25, point_y - 15)
+            entropyDirections[3] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 5, point_y + 5) + 0.1*grabEntropySquare(point_x + 15, point_x + 25, point_y - 5, point_y + 5)
+            entropyDirections[4] = grabEntropySquare(point_x + 5, point_x + 15, point_y + 5, point_y + 15) + 0.1*grabEntropySquare(point_x + 15, point_x + 25, point_y + 15, point_y + 25)
+            entropyDirections[5] = grabEntropySquare(point_x - 5, point_x + 5, point_y + 5, point_y + 15) + 0.1*grabEntropySquare(point_x - 5, point_x + 5, point_y + 15, point_y + 25)
+            entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y + 5, point_y + 15) + 0.1*grabEntropySquare(point_x - 25, point_x - 15, point_y + 15, point_y + 25)
+            entropyDirections[7] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5) + 0.1*grabEntropySquare(point_x - 25, point_x - 15, point_y - 5, point_y + 5)
 
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
@@ -368,7 +427,7 @@ class Pathfinding_Node:
                 dy = differential[1]
 
                 # Get the 3rd waypoint for ease of calculations.
-                end = self.waypoints.get(3)
+                end = self.waypoints.get(4)
 
                 # Check for duplicate points.
                 duplicates = 0
@@ -393,6 +452,13 @@ class Pathfinding_Node:
                     maximum = 0
                     for i in range(xMin - 1, xMax + 1):
                         for j in range(yMin - 1, yMax + 1):
+                            regionX = (0.05 * round((xMax + xMin)/2)) + self.mapActual.info.origin.position.x
+                            regionY = (0.05 * round((yMax + yMin)/2)) + self.mapActual.info.origin.position.y
+                            regionPos = PointStamped()
+                            regionPos.header.stamp = rospy.Time()
+                            regionPos.header.frame_id = "odom"
+                            regionPos.point = Point(regionX, regionY, 1)
+                            self.region_publisher.publish(regionPos)
                             if map(i, j) > maximum:
                                 maximum = map(i, j)
 
@@ -436,6 +502,7 @@ class Pathfinding_Node:
         def map(x, y):
             # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
             # to regions that have not been explored.
+            rospy.loginfo(len(self.mapActual.data))
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
                 return 50
             # Return.
@@ -482,7 +549,7 @@ class Pathfinding_Node:
                         closestFrontObject = ranges[360 - i]
                 
                 # Threshold distance. *This double is in meters.
-                if closestFrontObject < 0.5:
+                if closestFrontObject < 0.35:
                     return True
                 else:
                     return False
@@ -512,21 +579,11 @@ class Pathfinding_Node:
         publishWaypoints()
         robot = getMatrixPosition()
         # ROS info for debugging. Prints the waypoints and boolean information regarding the algorithm's status.
-        rospy.loginfo("\nPoint 1 :\n" +
-                      str(self.waypoints.get(1)) +
-                      "\nPoint 2 :\n" +
-                      str(self.waypoints.get(2)) +
-                      "\nPoint 3 :\n" +
-                      str(self.waypoints.get(3)) +
-                      "\nPoint 4 :\n" +
-                      str(self.waypoints.get(4)) +
-                      "\nRobot:" +
-                      "\nx            : " + str(robot[0]) +
-                      "\ny            : " + str(robot[1]) +  
-                      "\nReset        : " + str(self.reset) + 
-                      "\nCalculate    : " + str(newPoint) + 
-                      "\nFails        : " + str(self.fails) + 
-                      "\nEntropy Array: " + str(self.entropyVector))
+        #rospy.loginfo("\nRobot:" +  
+        #              "\nReset        : " + str(self.reset) + 
+        #              "\nCalculate    : " + str(newPoint) + 
+        #              "\nFails        : " + str(self.fails) + 
+        #              "\nEntropy Array: " + str(self.entropyVector))
 
         # Publish the waypoints to rqt for other scripts to use.
 
