@@ -271,7 +271,7 @@ class Pathfinding_Node:
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
             rayLimit = 40
-            offset = 32
+            offset = 30
             power = 2
             if x_pos > 0 and y_pos > 0:
                 # Calculate entropy sums.
@@ -280,49 +280,49 @@ class Pathfinding_Node:
                     if (y_pos - k) > 0 and (x_pos - k) > 0 and foundWalls[0] is False:
                         entropyDirections[0] = entropyDirections[0] + pow(map(x_pos - k, y_pos - k) - offset, power)/k
                     else:
-                        entropyDirections[0] = entropyDirections[0] + 9999
+                        entropyDirections[0] = entropyDirections[0] + pow(100-offset,power)/k
                     
                     # Check down.
                     if (y_pos - k) > 0 and foundWalls[1] is False:
                         entropyDirections[1] = entropyDirections[1] + pow(map(x_pos, y_pos - k) - offset, power)/k
                     else:
-                        entropyDirections[1] = entropyDirections[1] + 20
+                        entropyDirections[1] = entropyDirections[1] + pow(100-offset,power)/k
 
                     # Check down-right.
                     if (y_pos - k) > 0 and (x_pos + k) > 0 and foundWalls[2] is False:
                         entropyDirections[2] = entropyDirections[2] + pow(map(x_pos + k, y_pos - k) - offset, power)/k
                     else:
-                        entropyDirections[2] = entropyDirections[2] + 20
+                        entropyDirections[2] = entropyDirections[2] + pow(100-offset,power)/k
 
                     # Check right.
                     if (x_pos + k) > 0 and foundWalls[3] is False:
                         entropyDirections[3] = entropyDirections[3] + pow(map(x_pos + k, y_pos) - offset, power)/k
                     else:
-                        entropyDirections[3] = entropyDirections[3] + 20
+                        entropyDirections[3] = entropyDirections[3] + pow(100-offset,power)/k
 
                     # Check up-right.
                     if (y_pos + k) > 0 and (x_pos + k) > 0 and foundWalls[4] is False:
                         entropyDirections[4] = entropyDirections[4] + pow(map(x_pos + k, y_pos + k) - offset, power)/k
                     else:
-                        entropyDirections[4] = entropyDirections[4] + 20
+                        entropyDirections[4] = entropyDirections[4] + pow(100-offset,power)/k
 
                     # Check up.
                     if (y_pos + k) > 0 and foundWalls[5] is False:
                         entropyDirections[5] = entropyDirections[5] + pow(map(x_pos, y_pos + k) - offset, power)/k
                     else:
-                        entropyDirections[5] = entropyDirections[5] + 20
+                        entropyDirections[5] = entropyDirections[5] + pow(100-offset,power)/k
 
                     # Check up-left.
                     if (y_pos + k) > 0 and (x_pos - k) > 0 and foundWalls[6] is False:
                         entropyDirections[6] = entropyDirections[6] + pow(map(x_pos - k, y_pos + k) - offset, power)/k
                     else:
-                        entropyDirections[6] = entropyDirections[6] + 20
+                        entropyDirections[6] = entropyDirections[6] + pow(100-offset,power)/k
 
                     # Check left.
                     if (x_pos - k) > 0:
                         entropyDirections[7] = entropyDirections[7] + pow(map(x_pos - k, y_pos) - offset, power)/k
                     else:
-                        entropyDirections[7] = entropyDirections[7] + 20
+                        entropyDirections[7] = entropyDirections[7] + pow(100-offset,power)/k
                 
             # Find the direction of minimum entropy.
             direction = None
