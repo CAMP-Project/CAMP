@@ -148,7 +148,7 @@ void updateLongPos(const camp_goto::Cmd::ConstPtr& msg){
 }
 
 // This just checks if something is in front of the robot real fast.
-bool somethingInFront() {
+float somethingInFront() {
     float closest_front_object;
     if(ranges.size() == 360){
         // Find how close the closest object is (55 front scans)
@@ -158,13 +158,9 @@ bool somethingInFront() {
             if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
             if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
         }
-        if(closest_front_object < param.emg_stop) {
-            return true;
-        } else {
-            return false;
-        }
+        return closest_front_object;
     } else {
-        return true;
+        return 0.0;
     }
 }
 /**
@@ -226,16 +222,20 @@ int main(int argc, char **argv){
     ros::Subscriber offset_subscriber = nh.subscribe("transform", 10, offsetCallback);
     ros::Subscriber go_pos_subscriber = nh.subscribe("go_cmd", 10, updateLongPos);
 	cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
-    
+    backup_publisher = nh.advertise<std_msgs::Bool>("backup_state", 10);
+
+    bool backup = false;
+    float reset = 0.0;
 	while(ros::ok()) {
-        
         //Determine motor instructions from current point and the go vars
         // pointToPoint();
 
-        bool reset = somethingInFront();
-        if (!reset)
+        reset = somethingInFront();
+        if (reset > param.emg_stop + 0.1) backup = false;
+        if (reset < param.emg_stop) backup = true;
+        if (backup == false) {
             pointToPoint();
-        else {
+        } else {
             x_vel = -BURGER_MAX_LIN_VEL*param.speed;
             z_ang_vel = 0;
         }
@@ -256,6 +256,7 @@ int main(int argc, char **argv){
 	    //vel_msg.angular.z = 0;
         //publish vel_msg (move robot)
 	    cmd_publisher.publish(vel_msg);
+        backup_publisher.publish(backup);
         // Sleep according to the loop rate above
 		loop_rate.sleep();
         // Check for new messages from subscribed nodes

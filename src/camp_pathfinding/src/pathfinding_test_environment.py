@@ -41,6 +41,7 @@ roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
 from geometry_msgs.msg import Vector3, Point, PointStamped
+from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from camp_goto.msg import Cmd
@@ -63,6 +64,9 @@ class Pathfinding_Node:
 
         # Subscribe to odometry.
         rospy.Subscriber('/odom', Odometry, self.updateOdom)
+
+        # Subscribe to backup state.
+        rospy.Subscriber('/backup_state', Bool, self.updateBackup)
 
         # This will publish the computed waypoint information.
         self.point_publisher = rospy.Publisher('go_cmd', Cmd, queue_size = 10)
@@ -107,6 +111,8 @@ class Pathfinding_Node:
 
         self.entropyVector = [0, 0, 0, 0, 0, 0, 0, 0]
 
+        self.backup = False
+
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -125,6 +131,10 @@ class Pathfinding_Node:
     # This method will grab information from the robot's odometry.
     def updateOdom(self, data):
         self.odom = data
+
+    # Callback to update the backup state.
+    def updateBackup(self, data):
+        self.backup = data
 
     #--------------------------------------------------------------------------------------------------------------
     # Main Functionality of the Pathfinding algorithm
@@ -380,7 +390,7 @@ class Pathfinding_Node:
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
 
             # The amount of squares to advance.
-            d = 6
+            d = 8
 
             # Traversal movements in each direction. Premade depending on the direction to be calculated.
             advancementMap = {
