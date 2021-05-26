@@ -236,7 +236,7 @@ int main(int argc, char **argv){
         if (!reset)
             pointToPoint();
         else {
-            x_vel = -BURGER_MAX_ANG_VEL*param.speed;
+            x_vel = -BURGER_MAX_LIN_VEL*param.speed;
             z_ang_vel = 0;
         }
         
