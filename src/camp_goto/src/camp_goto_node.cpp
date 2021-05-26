@@ -16,6 +16,9 @@
 #include <vector>
 #include <math.h>
 #define PI 3.14159265
+
+#include <signal.h>
+
 using namespace std;
 //constants from teleop_key
 const float BURGER_MAX_LIN_VEL = 0.22;
@@ -37,6 +40,8 @@ struct parameters{
     int emeg_stop_angle = 27;
 } param;
 
+geometry_msgs::Twist vel_msg; 
+
 //Movement Vars
 float x_vel, z_ang_vel;
 float last_x=0, last_y=0;
@@ -49,6 +54,9 @@ float odom_x, odom_y;
 float deca_x, deca_y;
 float tx=0, ty=0, theta=0;
 float decagoal_x, decagoal_y;
+
+// CMD_VEL Publisher
+ros::Publisher cmd_publisher;
 
 float odom2decaX(float x, float y) {
     return x*cos(theta)-y*sin(theta)+tx;
@@ -192,12 +200,24 @@ void pointToPoint() {
     ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nMode:   [%d]\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,cmd,x_vel,z_ang_vel);
 }
 
+void shutdown_robot(int sig)
+{
+    vel_msg.linear.x = 0;
+    vel_msg.linear.y = 0;
+    vel_msg.linear.z = 0;
+    vel_msg.angular.x = 0;
+    vel_msg.angular.y = 0;
+    vel_msg.angular.z = 0;
+    cmd_publisher.publish(vel_msg);
+    ros::shutdown();
+}
+
 // This is the main function.
 // It contains some code to run once and a while loop for repeating actions.
 int main(int argc, char **argv){
 	ros::init(argc, argv, "camp_goto");
 	ros::NodeHandle nh;	
-	geometry_msgs::Twist vel_msg; 
+	signal(SIGINT, shutdown_robot);
 	ros::Rate loop_rate(10);
 
 	ros::Subscriber scan_subscriber = nh.subscribe("scan", 10, scanCallback);
@@ -205,15 +225,27 @@ int main(int argc, char **argv){
     ros::Subscriber tag_subscriber = nh.subscribe("filtered", 10, tagCallback);
     ros::Subscriber offset_subscriber = nh.subscribe("transform", 10, offsetCallback);
     ros::Subscriber go_pos_subscriber = nh.subscribe("go_cmd", 10, updateLongPos);
-	ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
-    	
+	cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    
 	while(ros::ok()) {
+        
         //Determine motor instructions from current point and the go vars
-        pointToPoint();
-        if(cmd.stop == true || somethingInFront()){
+        // pointToPoint();
+
+        bool reset = somethingInFront();
+        if (!reset)
+            pointToPoint();
+        else {
+            x_vel = -BURGER_MAX_ANG_VEL*param.speed;
+            z_ang_vel = 0;
+        }
+        
+        if(cmd.stop == true){
             x_vel = 0; 
             z_ang_vel = 0;
         }
+
+        
         // Write to the vel_msg we plan to publish
 	    vel_msg.linear.x = x_vel;
 	    vel_msg.linear.y = 0;
