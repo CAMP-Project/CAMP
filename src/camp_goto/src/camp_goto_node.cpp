@@ -92,8 +92,8 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     //ROS_INFO("grabbing odom");
     odom_x = msg->pose.pose.position.x;
     odom_y = msg->pose.pose.position.y;
-    float odom_quat = msg->pose.pose.orientation.x;
-    odom_rot = 2*acos(odom_quat)
+    float odom_quat = msg->pose.pose.orientation.w;
+    odom_rot = 2*acos(odom_quat);
 	
 }
 void tagCallback(const geometry_msgs::Twist::ConstPtr& msg) {
@@ -199,7 +199,7 @@ void pointToPoint() {
     }
     last_x = odom_x;
     last_y = odom_y;
-    ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\nOdometry Yaw: %1.4f\n---Positions---\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nSpeed: %1.2f\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_rot,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,x_vel,z_ang_vel);
+    ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Yaw: %1.4f\nCaclulated Yaw: %1.4f\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nSpeed: %1.2f\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_rot,heading,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,x_vel,z_ang_vel);
 }
 
 void shutdown_robot(int sig)
