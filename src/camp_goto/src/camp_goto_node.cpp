@@ -12,6 +12,8 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf/transform_datatypes.h>
 #include <nav_msgs/Odometry.h>
 #include "camp_goto/Cmd.h"
 #include <vector>
@@ -92,8 +94,16 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     //ROS_INFO("grabbing odom");
     odom_x = msg->pose.pose.position.x;
     odom_y = msg->pose.pose.position.y;
-    float odom_quat = msg->pose.pose.orientation.w;
-    odom_rot = 2*acos(odom_quat);
+    double quatx= msg->pose.pose.orientation.x;
+    double quaty= msg->pose.pose.orientation.y;
+    double quatz= msg->pose.pose.orientation.z;
+    double quatw= msg->pose.pose.orientation.w;
+
+    tf::Quaternion q(quatx, quaty, quatz, quatw);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    odom_rot = yaw;
 	
 }
 void tagCallback(const geometry_msgs::Twist::ConstPtr& msg) {
@@ -173,17 +183,17 @@ float somethingInFront() {
  * This function navigates the robot to the point (go_x,go_y) based on the odometry.
  */
 void pointToPoint() {
-    float dx = odom_x - last_x;
-    float dy = odom_y - last_y;
-    if(!(dy == 0 && dx == 0)) heading = atan2(dy,dx);
+    heading = odom_rot;
     float gx = go_x - odom_x;
     float gy = go_y - odom_y;
     float desired_heading = atan2(gy,gx);
     go_distance = sqrt(gx*gx+gy*gy);
     
     float head_error = desired_heading - heading;
-    if(head_error > PI) head_error = head_error - 2*PI;
-    if(head_error < 0-PI) head_error = head_error + 2*PI;
+    while ((head_error > PI) || (head_error < 0-PI)) {
+        if(head_error > PI) head_error = head_error - 2*PI;
+        if(head_error < 0-PI) head_error = head_error + 2*PI;
+    }
     //ROS_INFO("\ndes: %f\nhed: %f\nerr: %f",desired_heading,heading,head_error);
     
     //TODO: implement better control
@@ -199,7 +209,7 @@ void pointToPoint() {
     }
     last_x = odom_x;
     last_y = odom_y;
-    ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Yaw: %1.4f\nCaclulated Yaw: %1.4f\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nSpeed: %1.2f\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_rot,heading,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,x_vel,z_ang_vel);
+    ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Yaw: %1.4f\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nSpeed: %1.2f\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_rot,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,x_vel,z_ang_vel);
 }
 
 void shutdown_robot(int sig)
