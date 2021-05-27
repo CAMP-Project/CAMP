@@ -15,6 +15,7 @@
 #include "camp_goto/Cmd.h"
 #include <vector>
 #include <math.h>
+#include <std_msgs/Bool.h>
 #define PI 3.14159265
 
 #include <signal.h>
@@ -57,6 +58,7 @@ float decagoal_x, decagoal_y;
 
 // CMD_VEL Publisher
 ros::Publisher cmd_publisher;
+ros::Publisher backup_publisher;
 
 float odom2decaX(float x, float y) {
     return x*cos(theta)-y*sin(theta)+tx;
@@ -224,6 +226,7 @@ int main(int argc, char **argv){
 	cmd_publisher = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     backup_publisher = nh.advertise<std_msgs::Bool>("backup_state", 10);
 
+    std_msgs::Bool backupMsg;
     bool backup = false;
     float reset = 0.0;
 	while(ros::ok()) {
@@ -255,8 +258,9 @@ int main(int argc, char **argv){
 	    vel_msg.angular.z = z_ang_vel;
 	    //vel_msg.angular.z = 0;
         //publish vel_msg (move robot)
+        backupMsg.data = backup;
 	    cmd_publisher.publish(vel_msg);
-        backup_publisher.publish(backup);
+        backup_publisher.publish(backupMsg);
         // Sleep according to the loop rate above
 		loop_rate.sleep();
         // Check for new messages from subscribed nodes

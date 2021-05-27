@@ -111,7 +111,9 @@ class Pathfinding_Node:
 
         self.entropyVector = [0, 0, 0, 0, 0, 0, 0, 0]
 
-        self.backup = False
+        self.backupOld = False
+
+        self.backupNew = False
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -134,7 +136,7 @@ class Pathfinding_Node:
 
     # Callback to update the backup state.
     def updateBackup(self, data):
-        self.backup = data
+        self.backupNew = data
 
     #--------------------------------------------------------------------------------------------------------------
     # Main Functionality of the Pathfinding algorithm
@@ -404,15 +406,19 @@ class Pathfinding_Node:
                 7 : [-d, 0] 
             }
 
+            limitMin = 5
+            limitMax = 15
+            outerEdge = 30
+
             # Calculate entropy squares in 8 different directions around the robot. 
-            entropyDirections[0] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 15, point_y - 5) + 0.1*grabEntropySquare(point_x - 25, point_x - 15, point_y - 25, point_y - 15)
-            entropyDirections[1] = grabEntropySquare(point_x - 5, point_x + 5, point_y - 15, point_y - 5) + 0.1*grabEntropySquare(point_x - 5, point_x + 5, point_y - 25, point_y - 15)
-            entropyDirections[2] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 15, point_y - 5) + 0.1*grabEntropySquare(point_x + 15, point_x + 25, point_y - 25, point_y - 15)
-            entropyDirections[3] = grabEntropySquare(point_x + 5, point_x + 15, point_y - 5, point_y + 5) + 0.1*grabEntropySquare(point_x + 15, point_x + 25, point_y - 5, point_y + 5)
-            entropyDirections[4] = grabEntropySquare(point_x + 5, point_x + 15, point_y + 5, point_y + 15) + 0.1*grabEntropySquare(point_x + 15, point_x + 25, point_y + 15, point_y + 25)
-            entropyDirections[5] = grabEntropySquare(point_x - 5, point_x + 5, point_y + 5, point_y + 15) + 0.1*grabEntropySquare(point_x - 5, point_x + 5, point_y + 15, point_y + 25)
-            entropyDirections[6] = grabEntropySquare(point_x - 15, point_x - 5, point_y + 5, point_y + 15) + 0.1*grabEntropySquare(point_x - 25, point_x - 15, point_y + 15, point_y + 25)
-            entropyDirections[7] = grabEntropySquare(point_x - 15, point_x - 5, point_y - 5, point_y + 5) + 0.1*grabEntropySquare(point_x - 25, point_x - 15, point_y - 5, point_y + 5)
+            entropyDirections[0] = grabEntropySquare(point_x - limitMax, point_x - limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax - outerEdge, point_y - limitMax)
+            entropyDirections[1] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y - limitMax - outerEdge, point_y - limitMax)
+            entropyDirections[2] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y - limitMax - outerEdge, point_y - limitMax)
+            entropyDirections[3] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y - limitMin, point_y + limitMin) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y - limitMax, point_y + limitMax)
+            entropyDirections[4] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y +  limitMax, point_y + limitMax + outerEdge)
+            entropyDirections[5] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y +  limitMax, point_y + limitMax + outerEdge)
+            entropyDirections[6] = grabEntropySquare(point_x -  limitMax, point_x - limitMin, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y +  limitMax, point_y + limitMax + outerEdge)
+            entropyDirections[7] = grabEntropySquare(point_x -  limitMax, point_x - limitMin, point_y - limitMin, point_y + limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax, point_y + limitMax)
 
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
@@ -585,6 +591,8 @@ class Pathfinding_Node:
                 self.newPoint = True
             if newPoint == True and diff > 6:
                 self.newPoint = False 
+            if self.backupOld is True and self.backupNew is False:
+                resetWaypoints()
         
         publishWaypoints()
         robot = getMatrixPosition()
