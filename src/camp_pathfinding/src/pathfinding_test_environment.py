@@ -411,14 +411,14 @@ class Pathfinding_Node:
             outerEdge = 30
 
             # Calculate entropy squares in 8 different directions around the robot. 
-            entropyDirections[0] = grabEntropySquare(point_x - limitMax, point_x - limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax - outerEdge, point_y - limitMax)
-            entropyDirections[1] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y - limitMax - outerEdge, point_y - limitMax)
-            entropyDirections[2] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y - limitMax - outerEdge, point_y - limitMax)
-            entropyDirections[3] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y - limitMin, point_y + limitMin) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y - limitMax, point_y + limitMax)
-            entropyDirections[4] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y +  limitMax, point_y + limitMax + outerEdge)
-            entropyDirections[5] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y +  limitMax, point_y + limitMax + outerEdge)
-            entropyDirections[6] = grabEntropySquare(point_x -  limitMax, point_x - limitMin, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y +  limitMax, point_y + limitMax + outerEdge)
-            entropyDirections[7] = grabEntropySquare(point_x -  limitMax, point_x - limitMin, point_y - limitMin, point_y + limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax, point_y + limitMax)
+            entropyDirections[0] = grabEntropySquare(point_x - limitMax, point_x - limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax - outerEdge, point_y - limitMax)/9
+            entropyDirections[1] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y - limitMax - outerEdge, point_y - limitMax)/9
+            entropyDirections[2] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y - limitMax - outerEdge, point_y - limitMax)/9
+            entropyDirections[3] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y - limitMin, point_y + limitMin) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y - limitMax, point_y + limitMax)/9
+            entropyDirections[4] = grabEntropySquare(point_x + limitMin, point_x +  limitMax, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x +  limitMax, point_x + limitMax + outerEdge, point_y +  limitMax, point_y + limitMax + outerEdge)/9
+            entropyDirections[5] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y +  limitMax, point_y + limitMax + outerEdge)/9
+            entropyDirections[6] = grabEntropySquare(point_x -  limitMax, point_x - limitMin, point_y + limitMin, point_y + limitMax) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y +  limitMax, point_y + limitMax + outerEdge)/9
+            entropyDirections[7] = grabEntropySquare(point_x -  limitMax, point_x - limitMin, point_y - limitMin, point_y + limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax, point_y + limitMax)/9
 
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
@@ -447,9 +447,13 @@ class Pathfinding_Node:
 
                 # Check for duplicate points.
                 duplicates = 0
-                for i in range(1, 3):
+                for i in range(1, 4):
+                    rospy.loginfo("Point " + str(i) +"\nNew point: ("+str(end.x + dx)+","+str(end.y + dy)+")\nOld point: ("+str(self.waypoints.get(i).x)+","+str(self.waypoints.get(i).y)+")") 
                     if end.x + dx == self.waypoints.get(i).x and end.y + dy == self.waypoints.get(i).y:
+                        rospy.loginfo("Match")     
                         duplicates = duplicates + 1
+                    else:
+                        rospy.loginfo("No Match")
 
                 # Connect the 3rd point and the theoretical last point.
                 yMin = min([end.y, end.y + dy])
@@ -518,7 +522,7 @@ class Pathfinding_Node:
         def map(x, y):
             # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
             # to regions that have not been explored.
-            rospy.loginfo(len(self.mapActual.data))
+            # rospy.loginfo(len(self.mapActual.data))
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
                 return 50
             # Return.
