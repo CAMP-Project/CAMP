@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="camp_map" type="map.py" name="map" output="screen" />
+  
+  
+</launch>
