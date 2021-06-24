@@ -6,7 +6,7 @@ import rospy
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-#from geometry_msgs.msg import Vector3, Point, PointStamped
+from geometry_msgs.msg import Pose #Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 import tf
@@ -37,8 +37,8 @@ class Camp_Map:
         self.map.header.frame_id = "map"
         self.map.header.seq  = 0
         self.map.info.resolution = 0.05
-        self.map.info.width = 100
-        self.map.info.height = 100
+        self.map.info.width = 400
+        self.map.info.height = 400
         self.map.info.origin.position.x = -self.map.info.width/2*self.map.info.resolution
         self.map.info.origin.position.y = -self.map.info.height/2*self.map.info.resolution
         self.map.info.origin.position.z = 0
@@ -70,38 +70,24 @@ class Camp_Map:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
         def get_robot_angle():
-            euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
+            #euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
+            quat = (self.odom.pose.pose.orientation.x,
+                    self.odom.pose.pose.orientation.y,
+                    self.odom.pose.pose.orientation.z,
+                    self.odom.pose.pose.orientation.w)
+            euler = tf.transformations.euler_from_quaternion(quat)
             robot_angle = euler[2]
             return robot_angle
+            
 
-        def probably_free(dist,angle):
-            p_m0_g0 = 0.6 #0.9 
-            p_m1_g0 = 1-p_m0_g0 
-            p_m1_g1 = 0.6 #0.9 
-            p_m0_g1 = 1-p_m1_g1    
-            # placeholder where the robot is always centered on the map.
-            # replace ot account for odometry rotation and offset, and map origin
-            x = round(dist/self.map.info.resolution*math.cos(angle) + self.map.info.width/2)
-            y = round(dist/self.map.info.resolution*math.sin(angle) + self.map.info.height/2)
-
-            if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
-                # replace with map expander?
-                return
-
-            index = int(x + self.map.info.width * y)
-            #rospy.loginfo("f x:"+str(x)+" y:"+str(y)+" i:"+str(index))
-            prior = self.map.data[index] / 100.0
-            post = prior*p_m0_g1/(p_m0_g0*(1-prior)+p_m0_g1*prior)
-            self.map.data[index] = int(post * 100)
-
-        def probably_wall(dist,angle):
+        def update_square(scan_dist,scan_angle,robot_angle,update_param):
             p_m0_g0 = 0.6 #0.9 
             p_m1_g0 = 1-p_m0_g0 
             p_m1_g1 = 0.6 #0.9 
             p_m0_g1 = 1-p_m1_g1       
             # placeholder where the robot is always centered on the map.
-            x = round(dist/self.map.info.resolution*math.cos(angle) + self.map.info.width/2)
-            y = round(dist/self.map.info.resolution*math.sin(angle) + self.map.info.height/2)
+            x = round((scan_dist*math.cos(scan_angle + robot_angle) + self.odom.pose.pose.position.x - self.map.info.origin.position.x)/self.map.info.resolution)
+            y = round((scan_dist*math.sin(scan_angle + robot_angle) + self.odom.pose.pose.position.y - self.map.info.origin.position.y)/self.map.info.resolution)
 
             if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
                 return
@@ -109,23 +95,33 @@ class Camp_Map:
             index = int(x + self.map.info.width * y)
             #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
             prior = self.map.data[index]/100.0
-            post = prior*p_m1_g1/(p_m1_g0*(1-prior)+p_m1_g1*prior)
+            if update_param == "free":
+                post = prior*p_m0_g1/(p_m0_g0*(1-prior)+p_m0_g1*prior)
+            elif update_param == "wall":
+                post = prior*p_m1_g1/(p_m1_g0*(1-prior)+p_m1_g1*prior)
+            else:
+                print(update_param)
+                print("dude, you good?")
+                post = 0.5
+            if post < 0.01: post = 0.01
+            if post > 0.99: post = 0.99
             self.map.data[index] = int(post * 100)
 
 
-        def update_map(dist,angle):
+        def update_map(dist,scan_angle,robot_angle):
             d = 0
             while d < dist:
-                probably_free(d,angle)
+                update_square(d,scan_angle,robot_angle,"free")
                 d = d + self.map.info.resolution
-            probably_wall(d,angle)
+            update_square(d,scan_angle,robot_angle,"wall")
 
         #self.map.data = [self.map.data[i] -(self.map.data[i] - 50)/50 for i in range(0,self.map.info.width * self.map.info.height)]
 
-        angle = self.lidar.angle_min
+        scan_angle = self.lidar.angle_min
+        robot_angle = get_robot_angle()
         for r in self.lidar.ranges:
-            update_map(r,angle)
-            angle = angle + self.lidar.angle_increment
+            update_map(r,scan_angle,robot_angle)
+            scan_angle = scan_angle + self.lidar.angle_increment
         # update_map(1,0)
         self.map.header.seq = self.map.header.seq + 1
         self.map.header.stamp = rospy.Time.now()
