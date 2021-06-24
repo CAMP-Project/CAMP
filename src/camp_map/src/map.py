@@ -47,7 +47,7 @@ class Camp_Map:
         self.map.info.origin.orientation.z = 0
         self.map.info.origin.orientation.w = 0
         data = []
-        data = [50 for i in range(0,self.map.info.width * self.map.info.width)]
+        data = [50 for i in range(0,self.map.info.width * self.map.info.height)]
         self.map.data = data
 
 
@@ -92,7 +92,7 @@ class Camp_Map:
             #rospy.loginfo("f x:"+str(x)+" y:"+str(y)+" i:"+str(index))
             prior = self.map.data[index] / 100.0
             post = prior*p_m0_g1/(p_m0_g0*(1-prior)+p_m0_g1*prior)
-            self.map.data[index] = post * 100
+            self.map.data[index] = int(post * 100)
 
         def probably_wall(dist,angle):
             p_m0_g0 = 0.6 #0.9 
@@ -110,7 +110,7 @@ class Camp_Map:
             #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
             prior = self.map.data[index]/100.0
             post = prior*p_m1_g1/(p_m1_g0*(1-prior)+p_m1_g1*prior)
-            self.map.data[index] = post * 100
+            self.map.data[index] = int(post * 100)
 
 
         def update_map(dist,angle):
@@ -120,6 +120,7 @@ class Camp_Map:
                 d = d + self.map.info.resolution
             probably_wall(d,angle)
 
+        #self.map.data = [self.map.data[i] -(self.map.data[i] - 50)/50 for i in range(0,self.map.info.width * self.map.info.height)]
 
         angle = self.lidar.angle_min
         for r in self.lidar.ranges:
