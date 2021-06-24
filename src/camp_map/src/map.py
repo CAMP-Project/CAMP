@@ -9,6 +9,7 @@ roslib.load_manifest('rospy')
 #from geometry_msgs.msg import Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
+import tf
 
 class Camp_Map:
 
@@ -35,16 +36,16 @@ class Camp_Map:
         self.odom = Odometry()
         self.map.header.frame_id = "map"
         self.map.header.seq  = 0
-        self.map.info.origin.position.x = -2.5
-        self.map.info.origin.position.y = -2.5
+        self.map.info.resolution = 0.05
+        self.map.info.width = 100
+        self.map.info.height = 100
+        self.map.info.origin.position.x = -self.map.info.width/2*self.map.info.resolution
+        self.map.info.origin.position.y = -self.map.info.height/2*self.map.info.resolution
         self.map.info.origin.position.z = 0
         self.map.info.origin.orientation.x = 0
         self.map.info.origin.orientation.y = 0
         self.map.info.origin.orientation.z = 0
         self.map.info.origin.orientation.w = 0
-        self.map.info.resolution = 0.05
-        self.map.info.width = 100
-        self.map.info.height = 100
         data = []
         data = [50 for i in range(0,self.map.info.width * self.map.info.width)]
         self.map.data = data
@@ -68,16 +69,23 @@ class Camp_Map:
     # Main Functionality of the Pathfinding algorithm
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
+        def get_robot_angle():
+            euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
+            robot_angle = euler[2]
+            return robot_angle
+
         def probably_free(dist,angle):
             p_m0_g0 = 0.6 #0.9 
             p_m1_g0 = 1-p_m0_g0 
             p_m1_g1 = 0.6 #0.9 
             p_m0_g1 = 1-p_m1_g1    
             # placeholder where the robot is always centered on the map.
+            # replace ot account for odometry rotation and offset, and map origin
             x = round(dist/self.map.info.resolution*math.cos(angle) + self.map.info.width/2)
             y = round(dist/self.map.info.resolution*math.sin(angle) + self.map.info.height/2)
 
             if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
+                # replace with map expander?
                 return
 
             index = int(x + self.map.info.width * y)
