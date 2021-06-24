@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import math
 import roslib
-import numpy as np;
+#import numpy as np;
 import rospy
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Vector3, Point, PointStamped
+#from geometry_msgs.msg import Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 
@@ -33,6 +33,15 @@ class Camp_Map:
         self.map = OccupancyGrid() 
         self.lidar = LaserScan()                         
         self.odom = Odometry()
+        self.map.header.frame_id = "map"
+        self.map.header.seq  = 0
+        self.map.info.origin.position.x = -2.5
+        self.map.info.origin.position.y = -2.5
+        self.map.info.origin.position.z = 0
+        self.map.info.origin.orientation.x = 0
+        self.map.info.origin.orientation.y = 0
+        self.map.info.origin.orientation.z = 0
+        self.map.info.origin.orientation.w = 0
         self.map.info.resolution = 0.05
         self.map.info.width = 100
         self.map.info.height = 100
@@ -68,11 +77,11 @@ class Camp_Map:
             x = round(dist/self.map.info.resolution*math.cos(angle) + self.map.info.width/2)
             y = round(dist/self.map.info.resolution*math.sin(angle) + self.map.info.height/2)
 
-            if ((x >= self.map.info.width) or (y >= self.map.info.width)):
+            if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
                 return
 
             index = int(x + self.map.info.width * y)
-            rospy.loginfo("f x:"+str(x)+" y:"+str(y)+" i:"+str(index))
+            #rospy.loginfo("f x:"+str(x)+" y:"+str(y)+" i:"+str(index))
             prior = self.map.data[index] / 100.0
             post = prior*p_m0_g1/(p_m0_g0*(1-prior)+p_m0_g1*prior)
             self.map.data[index] = post * 100
@@ -86,11 +95,11 @@ class Camp_Map:
             x = round(dist/self.map.info.resolution*math.cos(angle) + self.map.info.width/2)
             y = round(dist/self.map.info.resolution*math.sin(angle) + self.map.info.height/2)
 
-            if ((x >= self.map.info.width) or (y >= self.map.info.width)):
+            if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
                 return
 
             index = int(x + self.map.info.width * y)
-            rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
+            #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
             prior = self.map.data[index]/100.0
             post = prior*p_m1_g1/(p_m1_g0*(1-prior)+p_m1_g1*prior)
             self.map.data[index] = post * 100
@@ -109,6 +118,8 @@ class Camp_Map:
             update_map(r,angle)
             angle = angle + self.lidar.angle_increment
         # update_map(1,0)
+        self.map.header.seq = self.map.header.seq + 1
+        self.map.header.stamp = rospy.Time.now()
         self.map_publisher.publish(self.map)
 
 
@@ -119,4 +130,4 @@ if __name__ == '__main__':
         path.main()
 
         # Run at 10 Hz.
-        rospy.sleep(0.1)
+        rospy.sleep(1)
