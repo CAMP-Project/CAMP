@@ -37,8 +37,8 @@ class Camp_Map:
         self.map.header.frame_id = "map"
         self.map.header.seq  = 0
         self.map.info.resolution = 0.05
-        self.map.info.width = 400
-        self.map.info.height = 400
+        self.map.info.width = 100
+        self.map.info.height = 100
         self.map.info.origin.position.x = -self.map.info.width/2*self.map.info.resolution
         self.map.info.origin.position.y = -self.map.info.height/2*self.map.info.resolution
         self.map.info.origin.position.z = 0
@@ -66,9 +66,46 @@ class Camp_Map:
 
 
     #--------------------------------------------------------------------------------------------------------------
-    # Main Functionality of the Pathfinding algorithm
+    # Main Functionality of the mapping algorithm
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
+        def expand_map(direction):
+            expand_amount = 100
+            xbuffer = 0
+            ybuffer = 0
+            old_width = self.map.info.width
+            new_width = old_width
+            old_height = self.map.info.height
+            new_height = old_height
+
+            if direction == "+x":
+                new_width = new_width + expand_amount
+            if direction == "-x":
+                xbuffer = expand_amount
+                new_width = new_width + expand_amount
+            if direction == "+y":
+                new_height = new_height + expand_amount
+            if direction == "-y":
+                ybuffer = expand_amount
+                new_height = new_height + expand_amount
+
+            newdata = []
+            newdata = [50 for i in range(0,new_width * new_height)]
+            for m in range(0,old_width):
+                for n in range(0,old_height):
+                    old_index = m + old_width * n
+                    new_index = (m + xbuffer) + new_width * (n + ybuffer)
+                    newdata[new_index] = self.data[old_index]
+            
+            self.map.info.width = new_width
+            self.map.info.height = new_height
+            self.map.info.origin.position.x = self.map.info.origin.position.x - xbuffer * self.map.info.resolution
+            self.map.info.origin.position.y = self.map.info.origin.position.y - ybuffer * self.map.info.resolution
+            self.map.info.origin.position.z = 0
+            
+
+
+
         def get_robot_angle():
             #euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
             quat = (self.odom.pose.pose.orientation.x,
@@ -89,8 +126,16 @@ class Camp_Map:
             x = round((scan_dist*math.cos(scan_angle + robot_angle) + self.odom.pose.pose.position.x - self.map.info.origin.position.x)/self.map.info.resolution)
             y = round((scan_dist*math.sin(scan_angle + robot_angle) + self.odom.pose.pose.position.y - self.map.info.origin.position.y)/self.map.info.resolution)
 
-            if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
-                return
+            # if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
+            #     return
+            if (x >= self.map.info.width):
+                expand_map("+x")
+            if (y >= self.map.info.width):
+                expand_map("+y")
+            if (x < 0):
+                expand_map("-x")
+            if (y < 0):
+                expand_map("-y")
 
             index = int(x + self.map.info.width * y)
             #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
