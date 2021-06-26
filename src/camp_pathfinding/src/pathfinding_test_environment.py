@@ -16,6 +16,7 @@
 # 5/5/2021  - Sean Carda: Finalized the code. It is entirely possible that more
 #                         edits will be necessary.
 #
+# 6/26/2021 - Sean Carda: Fixed some bugs with variable maps and data array checks.
 #
 #----------------------------------------------------------------------------------------
 
@@ -33,9 +34,7 @@
 
 # Package imports.
 import math
-from geometry_msgs import msg
 import roslib
-import numpy as np;
 import rospy
 roslib.load_manifest('rospy')
 
@@ -44,6 +43,9 @@ from geometry_msgs.msg import Vector3, Point, PointStamped
 from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
+
+# The Cmd message is a custom message intended to send a command to the motor controller.
+# More details on this message can be found in the message file in the camp_goto package.
 from camp_goto.msg import Cmd
 
 
@@ -56,35 +58,40 @@ class Pathfinding_Node:
         # Have ROS initialize this script as a node in rqt.
         rospy.init_node('pathfinding', anonymous = False)
 
-        # Subscribe to map.
+        # Subscribe to the map topic.
         rospy.Subscriber('/map', OccupancyGrid, self.updateMap)      
         
-        # Subscribe to LiDAR.
+        # Subscribe to the LiDAR topic.
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)
 
-        # Subscribe to odometry.
+        # Subscribe to the odometry topic.
         rospy.Subscriber('/odom', Odometry, self.updateOdom)
 
-        # Subscribe to backup state.
+        # Subscribe to the backup state topic.
         rospy.Subscriber('/backup_state', Bool, self.updateBackup)
 
         # This will publish the computed waypoint information.
         self.point_publisher = rospy.Publisher('go_cmd', Cmd, queue_size = 10)
         
-        # Instantiate publlishers for displaying the waypoints in rviz. This will be invaluable for debugging.
+        # Instantiate publlishers for displaying the waypoints in rviz. This is valuable for debugging.
         self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
+
+        # The region publisher publishes the point in which the robot is currently tring to plan 
+        # a new point. The region point is located in the center of an entropy grid.
         self.region_publisher = rospy.Publisher('region', PointStamped, queue_size = 10)
+
+        # This publishes the position of the robot.
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
         
 
         # Create a waypoint hashmap. Stores coordinates of waypoints. This will start as an 
         # arbitrary set of points away from the robot.
-        # [x_coordinate, y_doordinate, relative_frame]
+        # Point(x_coordinate, y_doordinate, relative_frame)
         # relative frames:
-        # 0: Stop
+        # 0: Stop Moving
         # 1: Odometry
         # 2: Decawave
         self.waypoints = {1 : Point(206, 206, 1),
@@ -106,13 +113,15 @@ class Pathfinding_Node:
 
         # Property which holds on to the satisfactory distance for when a new point should be generated.
         self.satisDist = 1
-
+        
+        # Tracks whether the robot is trying to create a point.
         self.createPoint = False
 
+        # Tracks the values stored in the entropy array during a reset calculation.
         self.entropyVector = [0, 0, 0, 0, 0, 0, 0, 0]
-
+        
+        # Backup checks.
         self.backupOld = False
-
         self.backupNew = False
 
 
@@ -134,7 +143,7 @@ class Pathfinding_Node:
     def updateOdom(self, data):
         self.odom = data
 
-    # Callback to update the backup state.
+    # Callback to update the most recent backup state.
     def updateBackup(self, data):
         self.backupNew = data
 
@@ -143,7 +152,7 @@ class Pathfinding_Node:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):        
     
-            # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
+        # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
         def getRoboMapPosition():
             # Use Odometry to get the robot's position.
             result = Vector3()
@@ -180,7 +189,7 @@ class Pathfinding_Node:
             return position_in_units
 
 
-        # Method for publishing waypoints to RQT. 
+        # Method for publishing waypoints to RQT and RVIZ. 
         def publishWaypoints():
             # First get the waypoint, which is in units.
             waypoint = self.waypoints.get(1)
@@ -191,18 +200,18 @@ class Pathfinding_Node:
             y = (0.05 * waypoint.y) + self.mapActual.info.origin.position.y
             goTo = Point(x, y, waypoint.z)
 
+            # Create all of the information necessary for the Cmd publisher.
             command = Cmd()
             command.destination = goTo
             command.stop = False
             command.is_relative = False
             command.is_deca = False
-
             command.speed = 0.43
-
             command.destination_stop_distance = 0
             command.emergency_stop_distance = 0.15
             command.emergency_stop_angle = 30
 
+            # Publish the command to the controller.
             self.point_publisher.publish(command)
 
             # Publish the points in rviz.
@@ -211,6 +220,7 @@ class Pathfinding_Node:
             self.viz_publisher_3.publish(getPointInMeters(3))
             self.viz_publisher_4.publish(getPointInMeters(4))
 
+            # Prepare the information necessary for the robot position publisher.
             roboPosX = getRoboMapPosition().x
             roboPosY = getRoboMapPosition().y
             roboPos = PointStamped()
@@ -218,6 +228,7 @@ class Pathfinding_Node:
             roboPos.header.frame_id = "odom"
             roboPos.point = Point(roboPosX, roboPosY, 1)
 
+            # Publish the robot's position.
             self.robot_publisher.publish(roboPos)
 
 
@@ -241,19 +252,21 @@ class Pathfinding_Node:
         # to waypoint 1 or if all paths fail around waypoint 3.
         def resetWaypoints():
             # Get position of robot as a matrix value in the map.
-            #x_pos = int(getMatrixPosition()[0])
-            #y_pos = int(getMatrixPosition()[1])
-
             x_pos = getMatrixPosition()[0]
             y_pos = getMatrixPosition()[1]
-
             
             # Entropy positions: [down-left, down, down-right, right, up-right, up, up-left, left]
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
-            checkSigns = [[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0]]
-            foundWalls = [False, False, False, False, False, False, False, False]
-            N = self.mapActual.info.height
 
+            # Intermediate step for automating the reset calculation process. ** Needs to be completed **
+            checkSigns = [[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0]]
+
+            # Checks for whether an obstacle has been found in the 8 checked directions.
+            # If an object has been found in a direction, the flag is set to True. This will
+            # make all indices checked after the obstacle as 9999 to strongly discourage that direction.
+            foundWalls = [False, False, False, False, False, False, False, False]
+
+            # Distances at which at space points.
             dist1 = 6
             dist2 = 2 * dist1
             dist3 = 3 * dist1
@@ -284,8 +297,11 @@ class Pathfinding_Node:
                            7 : [[x_pos - dist1, x_pos - dist2, x_pos - dist3, x_pos - dist4],
                                 [y_pos, y_pos, y_pos, y_pos]]}        
 
+            # Sets the limit for point checks.
             rayLimit = 40
-            offset = 30
+
+            # Information for difference optimization.
+            offset = 26
             power = 2
             if x_pos > 0 and y_pos > 0:
                 # Calculate entropy sums.
@@ -355,17 +371,10 @@ class Pathfinding_Node:
                         entropyDirections[7] = entropyDirections[7] + 9999
                 
             # Find the direction of minimum entropy.
-            direction = None
-            maxVal = 1000
-            minVal = 500
-            self.entropyVector = entropyDirections
-            #for value in entropyDirections:
-            #    if value < maxVal and value > minVal:
-            #        direction = entropyDirections.index(value)
-            #        break
-            
-            #if direction is None:
             direction = entropyDirections.index(min(entropyDirections))
+ 
+            # Set the entropyVector debug parameter.
+            self.entropyVector = entropyDirections
 
             # Select the path from the waypointMap above based on the calculated direction.
             path = waypointMap.get(direction)
@@ -385,9 +394,6 @@ class Pathfinding_Node:
             point_x = self.waypoints.get(4).x
             point_y = self.waypoints.get(4).y
 
-            # Map limit.
-            N = self.mapActual.info.height
-
             # Entropy positions [down-left, down, down-right, right, up-right, up, up-left, left]
             entropyDirections = [0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -406,6 +412,7 @@ class Pathfinding_Node:
                 7 : [-d, 0] 
             }
 
+            # Parameters for larger entropy grid calculations.
             limitMin = 5
             limitMax = 15
             outerEdge = 30
@@ -425,8 +432,8 @@ class Pathfinding_Node:
             isObstacle = 1
 
             while isObstacle == 1:
+                # Debug information.
                 inc = 0
-                #test = 0
                 for x in entropyDirections:
                     rospy.loginfo(str(inc)+": " +str(x))
                     inc = inc + 1
@@ -435,6 +442,7 @@ class Pathfinding_Node:
                 # The entropy tells the robot where the "highest reward" is.
                 direction = entropyDirections.index(max(entropyDirections))   
 
+                # Debug for current direction check.
                 rospy.loginfo("try:"+str(direction))           
 
                 # Get the number of squares to increase in either direction depending on the calculated direction.
@@ -464,9 +472,8 @@ class Pathfinding_Node:
                 # Check for bounds errors or if any duplicates exist. If so, restart the sweek by setting the entropy
                 # sum in that direction to 0. This will prevent that direction from being searched again since the 
                 # algorithm checks for the maximum entropy value.
-                if yMin < 2 or yMax > N - 1 or xMin < 2 or xMax > N - 1 or duplicates > 0:
-                    if duplicates > 0:
-                        rospy.loginfo("duplicates > 0 (" + str(duplicates) + ")")
+                if duplicates > 0:
+                    rospy.loginfo("duplicates > 0 (" + str(duplicates) + ")")
                     entropyDirections[direction] = 0
                 else:
                     maximum = 0
@@ -503,7 +510,6 @@ class Pathfinding_Node:
                     isObstacle = 0
 
 
-
         # Method to calculate an entire region of entropy. Reduces the necessary lines of code to write.
         def grabEntropySquare(range_x_1, range_x_2, range_y_1, range_y_2):
             # Initialize the result of the scan.
@@ -520,9 +526,10 @@ class Pathfinding_Node:
 
         # This method calculates and returns the entropy data at a given matrix coordinate.
         def map(x, y):
-            # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
+            # If the value at a given index is -1, return 50. This is to keep the robot from travrsing
             # to regions that have not been explored.
-            # rospy.loginfo(len(self.mapActual.data))
+            if len(self.mapActual.data) <= 0:
+                return 0
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
                 return 50
             # Return.
@@ -544,7 +551,7 @@ class Pathfinding_Node:
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
 
-            # Return.
+            # Return the entropy.
             return ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
 
 
@@ -599,15 +606,6 @@ class Pathfinding_Node:
                 resetWaypoints()
         
         publishWaypoints()
-        robot = getMatrixPosition()
-        # ROS info for debugging. Prints the waypoints and boolean information regarding the algorithm's status.
-        #rospy.loginfo("\nRobot:" +  
-        #              "\nReset        : " + str(self.reset) + 
-        #              "\nCalculate    : " + str(newPoint) + 
-        #              "\nFails        : " + str(self.fails) + 
-        #              "\nEntropy Array: " + str(self.entropyVector))
-
-        # Publish the waypoints to rqt for other scripts to use.
 
 
 # Trigger functionality. Run this script until the keyboardInterrupt is triggered.
