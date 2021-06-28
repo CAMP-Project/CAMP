@@ -70,7 +70,7 @@ class Camp_Map:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
         def expand_map(direction):
-            expand_amount = 100
+            expand_amount = 50
             xbuffer = 0
             ybuffer = 0
             old_width = self.map.info.width
@@ -95,7 +95,7 @@ class Camp_Map:
                 for n in range(0,old_height):
                     old_index = m + old_width * n
                     new_index = (m + xbuffer) + new_width * (n + ybuffer)
-                    newdata[new_index] = self.data[old_index]
+                    newdata[new_index] = self.map.data[old_index]
             
             self.map.info.width = new_width
             self.map.info.height = new_height
@@ -103,6 +103,7 @@ class Camp_Map:
             self.map.info.origin.position.y = self.map.info.origin.position.y - ybuffer * self.map.info.resolution
             self.map.info.origin.position.z = 0
             
+            self.map.data = newdata
 
 
 
@@ -128,17 +129,24 @@ class Camp_Map:
 
             # if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
             #     return
+            #print("x: " + str(x) + "y: " + str(y))
+            #print(self.map.info.width)
             if (x >= self.map.info.width):
                 expand_map("+x")
-            if (y >= self.map.info.width):
+                print("expanded +x")
+            if (y >= self.map.info.height):
                 expand_map("+y")
+                print("expanded +y")
             if (x < 0):
                 expand_map("-x")
+                print("expanded -x")
             if (y < 0):
                 expand_map("-y")
+                print("expanded -y")
 
             index = int(x + self.map.info.width * y)
             #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
+            #print(index)
             prior = self.map.data[index]/100.0
             if update_param == "free":
                 post = prior*p_m0_g1/(p_m0_g0*(1-prior)+p_m0_g1*prior)
