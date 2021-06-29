@@ -295,8 +295,8 @@ class Pathfinding_Node:
             x = self.odom.pose.pose.position.x
             y = self.odom.pose.pose.position.y
             for i in range(0,self.waypoint_count):
-                x = x + dist*i*math.cos(2*math.pi/self.direction_count * direction)
-                y = y + dist*i*math.sin(2*math.pi/self.direction_count * direction)
+                x = x + dist*math.cos(2*math.pi/self.direction_count * direction)
+                y = y + dist*math.sin(2*math.pi/self.direction_count * direction)
                 self.waypoints[i] = Point(x,y,0)
 
 
@@ -308,7 +308,7 @@ class Pathfinding_Node:
             end = self.waypoints[self.waypoint_count-1]
 
             # number of directions
-            self.direction_count = 6
+            #self.direction_count = 6
             # distance from last point in meters
             dist = 0.4
             # height and width of square to test in meters
@@ -319,7 +319,7 @@ class Pathfinding_Node:
             for i in range(0,self.direction_count):
                 print(i)
                 entropyDirections[i] = grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist - size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist + size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist - size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist + size/2)
-
+                #TODO: add more boxes
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
             isObstacle = 1
@@ -431,6 +431,7 @@ class Pathfinding_Node:
             # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
             # to regions that have not been explored.
             # rospy.loginfo(len(self.mapActual.data))
+            print("checking ("+str(x)+","+str(y)+")")
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
                 return 50
             # Return.
@@ -447,7 +448,7 @@ class Pathfinding_Node:
             if p < 0:
                 p = 0.5
             
-            p = p / 102
+            p = p / 102.0
 
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
@@ -478,10 +479,12 @@ class Pathfinding_Node:
                 
                 # Threshold distance. *This double is in meters.
                 if closestFrontObject < 0.35:
+                    print("object "+str(closestFrontObject)+" meters away!")
                     return True
                 else:
                     return False
             else:
+                print("no lidar data!")
                 return True
         
         # Main functionality of the pathfinding code. 
