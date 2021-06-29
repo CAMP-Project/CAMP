@@ -1,9 +1,9 @@
 # Coordinated Autonomous Mapping & Pathfinding
 
 ## Project Depenendencies
-* [OpenCV](https://github.com/opencv/opencv)
-* [Intel Realsense Library](https://github.com/IntelRealSense/librealsense)
 * [Multimaster FKIE](http://wiki.ros.org/multimaster_fkie)
+* ROS Packages listen in the ROS Installation Crash Course Document
+
 
 ## How to build project
 
