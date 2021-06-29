@@ -225,7 +225,7 @@ class Pathfinding_Node:
             roboPosY = getRoboMapPosition().y
             roboPos = PointStamped()
             roboPos.header.stamp = rospy.Time()
-            roboPos.header.frame_id = "odom"
+            roboPos.header.frame_id = "map"
             roboPos.point = Point(roboPosX, roboPosY, 1)
 
             # Publish the robot's position.
@@ -244,7 +244,7 @@ class Pathfinding_Node:
             result_viz = PointStamped()
             result_viz.point = result
             result_viz.header.stamp = rospy.Time()
-            result_viz.header.frame_id = "odom"
+            result_viz.header.frame_id = "map"
             return result_viz
 
 
@@ -483,7 +483,7 @@ class Pathfinding_Node:
                             regionY = (0.05 * round((yMax + yMin)/2)) + self.mapActual.info.origin.position.y
                             regionPos = PointStamped()
                             regionPos.header.stamp = rospy.Time()
-                            regionPos.header.frame_id = "odom"
+                            regionPos.header.frame_id = "map"
                             regionPos.point = Point(regionX, regionY, 1)
                             self.region_publisher.publish(regionPos)
                             if map(i, j) > maximum:
@@ -540,18 +540,20 @@ class Pathfinding_Node:
         def entropy(x, y):
             # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
             p = self.mapActual.data[x + (self.mapActual.info.width * y)]
+            print(p)
             
             # If the value of the probability at the given index is negative, replace it with 0.5.
             # Note: this does not replace the value of the probability value in the OccupancyMap.
             if p < 0:
                 p = 0.5
-            
-            p = p / 102
-
+            print(p)
+            p = p / 102.0
+            print(p)
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
-
+            print(p)
             # Return the entropy.
+            print((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
             return ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
 
 

@@ -119,9 +119,9 @@ class Camp_Map:
             
 
         def update_square(scan_dist,scan_angle,robot_angle,update_param):
-            p_m0_g0 = 0.6 #0.9 
+            p_m0_g0 = 0.7 #0.9 
             p_m1_g0 = 1-p_m0_g0 
-            p_m1_g1 = 0.6 #0.9 
+            p_m1_g1 = 0.7 #0.9 
             p_m0_g1 = 1-p_m1_g1       
             # placeholder where the robot is always centered on the map.
             x = round((scan_dist*math.cos(scan_angle + robot_angle) + self.odom.pose.pose.position.x - self.map.info.origin.position.x)/self.map.info.resolution)
