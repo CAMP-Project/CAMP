@@ -541,6 +541,13 @@ class Pathfinding_Node:
             resetWaypoints()
         else:
             if diff < 0.15 and self.createPoint == False:
+                # when close enough to waypoint 0
+                # adjust the next waypoint
+                adjustment = self.waypoints[1].auto_adjust(self.mapActual)
+                # do the adjustment on all the other waypoints after
+                for i in range(2,self.waypoint_count):
+                    self.waypoints[i].quick_adjust(adjustment)
+                # create a new waypoint after adjustment
                 createNewWaypoint()
                 self.newPoint = True
             if newPoint == True and diff > 0.3:
