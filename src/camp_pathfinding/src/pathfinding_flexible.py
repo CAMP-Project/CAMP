@@ -56,7 +56,7 @@ class Pathfinding_Node:
     #--------------------------------------------------------------------------------------------------------------
     def __init__(self): 
         # number of directions to look when deciding on a direction
-        self.direction_count = 12
+        self.direction_count = 9
         #number of waypoints to generate
         self.waypoint_count = 4
 
@@ -313,12 +313,14 @@ class Pathfinding_Node:
             dist = 0.4
             # height and width of square to test in meters
             size = 0.5
+            biggerboxmultiplier = 3
 
             entropyDirections = []
             entropyDirections = [0 for i in range(0,self.direction_count)]
             for i in range(0,self.direction_count):
                 print(i)
                 entropyDirections[i] = grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist - size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist + size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist - size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist + size/2)
+                + grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2)/9*0.1
                 #TODO: add more boxes
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
@@ -471,14 +473,14 @@ class Pathfinding_Node:
                     closestFrontObject = 500
 
                 # Increment the second value in this loop to sweep over a larger angle.
-                for i in range(1, 17):
+                for i in range(1, 22):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
                 # Threshold distance. *This double is in meters.
-                if closestFrontObject < 0.35:
+                if closestFrontObject < 0.15:
                     print("object "+str(closestFrontObject)+" meters away!")
                     return True
                 else:
