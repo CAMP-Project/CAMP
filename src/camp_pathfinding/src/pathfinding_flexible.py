@@ -63,7 +63,6 @@ class Waypoint:
         self.viz_publisher.publish(result_viz)
 
     def auto_adjust(self,map):
-        map = OccupancyGrid()
         # convert point from meters to grid squares (i don't int(round()) this because i do that in the l/r check)
         x = (self.point.x - map.info.origin.position.x)/map.info.resolution
         y = (self.point.y - map.info.origin.position.y)/map.info.resolution
@@ -76,12 +75,12 @@ class Waypoint:
         # if there is a wall closer than 1m, write the number of grid squares to left or right.
         # TODO: handle edge of map cases?
         for i in range(0,20):
-            if left == 20 and map.data[int(round(x + i * unit_x)) + (map.info.width * int(round(y + i * unit_y)))]:
+            if left == 20 and map.data[int(round(x + i * unit_x)) + (map.info.width * int(round(y + i * unit_y)))] > 90:
                 left = i
-            if right == 20 and map.data[int(round(x - i * unit_x)) + (map.info.width * int(round(y - i * unit_y)))]:
+            if right == 20 and map.data[int(round(x - i * unit_x)) + (map.info.width * int(round(y - i * unit_y)))] > 90:
                 right = i
         # find out how many meters we need to move the point to get it 0.5m from the wall
-        adjust = (left - right)/2 * map.resolution
+        adjust = (left - right)/2 * map.info.resolution
         # create adjustment vectors in meters for the x and y directions
         adjust_x = (unit_x * adjust)
         adjust_y = (unit_y * adjust)
@@ -94,6 +93,7 @@ class Waypoint:
     def quick_adjust(self,adjust):
         self.point.x = self.point.x + adjust[0]
         self.point.y = self.point.y + adjust[1]
+        print("executed quick adjust")
 
 
 
@@ -467,7 +467,7 @@ class Pathfinding_Node:
             # If the value at a given index is -1, return 100. This is to keep the robot from travrsing
             # to regions that have not been explored.
             # rospy.loginfo(len(self.mapActual.data))
-            print("checking ("+str(x)+","+str(y)+")")
+            #print("checking ("+str(x)+","+str(y)+")")
             if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
                 return 50
             # Return.
@@ -476,6 +476,7 @@ class Pathfinding_Node:
 
         # Method to calculate the entropy at a given map index.
         def entropy(x, y):
+            #print("entropy("+str(x)+","+str(y)+")")
             # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
             p = self.mapActual.data[x + (self.mapActual.info.width * y)]
             
@@ -507,14 +508,14 @@ class Pathfinding_Node:
                     closestFrontObject = 500
 
                 # Increment the second value in this loop to sweep over a larger angle.
-                for i in range(1, 22):
+                for i in range(1, 17):
                     if ranges[i] < closestFrontObject and ranges[i] != 0:
                         closestFrontObject = self.lidar.ranges[i]
                     if ranges[360 - i] < closestFrontObject and ranges[360 - i] != 0:
                         closestFrontObject = ranges[360 - i]
                 
                 # Threshold distance. *This double is in meters.
-                if closestFrontObject < 0.15:
+                if closestFrontObject < 0.3:
                     print("object "+str(closestFrontObject)+" meters away!")
                     return True
                 else:
