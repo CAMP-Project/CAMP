@@ -40,7 +40,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
         {
             debug_print("Sync");
             // Advertise the current robot's map and odometry under a different name
-            // ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), _current_name.size());
+            ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), s);
             if (this->_current_name.size() > 0 && _map_pub.getTopic().empty())
             {
                 ROS_INFO("Setting up my publishers");
