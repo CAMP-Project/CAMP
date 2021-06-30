@@ -48,6 +48,20 @@ from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from camp_goto.msg import Cmd
 
+class Waypoint:
+    def __init__(self,num,x,y,theta):
+        self.point = Point(x,y,0)
+        self.heading = theta
+        self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
+        
+    def publish(self):
+        # Result as a PointStamp.
+        result_viz = PointStamped()
+        result_viz.point = self.point
+        result_viz.header.stamp = rospy.Time()
+        result_viz.header.frame_id = "map"
+        self.viz_publisher.publish(result_viz)
+
 
 class Pathfinding_Node:
 
