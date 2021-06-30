@@ -62,6 +62,40 @@ class Waypoint:
         result_viz.header.frame_id = "map"
         self.viz_publisher.publish(result_viz)
 
+    def auto_adjust(self,map):
+        map = OccupancyGrid()
+        # convert point from meters to grid squares (i don't int(round()) this because i do that in the l/r check)
+        x = (self.point.x - map.info.origin.position.x)/map.info.resolution
+        y = (self.point.y - map.info.origin.position.y)/map.info.resolution
+        # set a unit vector normal to the heading
+        unit_x = math.cos(self.theta + math.pi/2)
+        unit_y = math.sin(self.theta + math.pi/2)
+        # initialize left and right at 1m (20 squares)
+        left = 20
+        right = 20
+        # if there is a wall closer than 1m, write the number of grid squares to left or right.
+        # TODO: handle edge of map cases?
+        for i in range(0,20):
+            if left == 20 and map.data[int(round(x + i * unit_x)) + (map.info.width * int(round(y + i * unit_y)))]:
+                left = i
+            if right == 20 and map.data[int(round(x - i * unit_x)) + (map.info.width * int(round(y - i * unit_y)))]:
+                right = i
+        # find out how many meters we need to move the point to get it 0.5m from the wall
+        adjust = (left - right)/2 * map.resolution
+        # create adjustment vectors in meters for the x and y directions
+        adjust_x = (unit_x * adjust)
+        adjust_y = (unit_y * adjust)
+        # change the point to the adjusted point
+        self.point.x = self.point.x + adjust_x
+        self.point.y = self.point.y + adjust_y
+        print("adjusted the point by "+str(adjust_x)+" x and "+str(adjust_y)+" y.")
+        return [adjust_x,adjust_y]
+    
+    def quick_adjust(self,adjust):
+        self.point.x = self.point.x + adjust[0]
+        self.point.y = self.point.y + adjust[1]
+
+
 
 class Pathfinding_Node:
 
