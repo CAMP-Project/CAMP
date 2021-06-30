@@ -49,7 +49,7 @@ from sensor_msgs.msg import LaserScan
 from camp_goto.msg import Cmd
 
 class Waypoint:
-    def __init__(self,num,x,y,theta):
+    def __init__(self,num,x=0,y=0,theta=0):
         self.point = Point(x,y,0)
         self.heading = theta
         self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
@@ -93,17 +93,18 @@ class Pathfinding_Node:
         self.point_publisher = rospy.Publisher('go_cmd', Cmd, queue_size = 10)
         
         # Instantiate publlishers for displaying the waypoints in rviz. This will be invaluable for debugging.
-        self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
-        self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
-        self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
-        self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
+        # these moved to the new waypoint class
+#         self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
+#         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
+#         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
+#         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
         self.region_publisher = rospy.Publisher('region', PointStamped, queue_size = 10)
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
         
 
         # make waypoint_count number of waypoints
         self.waypoints = []
-        self.waypoints = [Point(0,0,i/10) for i in range(0,self.waypoint_count)]
+        self.waypoints = [Waypoint(i) for i in range(0,self.waypoint_count)]
 
         # Initialize important data types. For this script, we need access to the OccupancyGrid produced
         # by SLAM. We need the Lidar for obstacle detection. We need the odometry for positional data. 
@@ -205,7 +206,7 @@ class Pathfinding_Node:
             # goTo = Point(x, y, waypoint.z)
 
             command = Cmd()
-            command.destination = self.waypoints[0] # i hope this works
+            command.destination = self.waypoints[0].point
             command.stop = False
             command.is_relative = False
             command.is_deca = False
@@ -219,12 +220,9 @@ class Pathfinding_Node:
             self.point_publisher.publish(command)
 
             # Publish the points in rviz.
-            # TODO: modify to make sure these publish right with unit->meter change
             #print("publishing...")
-            self.viz_publisher_1.publish(getPointForPublish(0))
-            self.viz_publisher_2.publish(getPointForPublish(1))
-            self.viz_publisher_3.publish(getPointForPublish(2))
-            self.viz_publisher_4.publish(getPointForPublish(3))
+            for w in self.waypoints:
+                w.publish()
 
             roboPosX = getRoboMapPosition().x
             roboPosY = getRoboMapPosition().y
@@ -234,21 +232,6 @@ class Pathfinding_Node:
             roboPos.point = Point(roboPosX, roboPosY, 1)
 
             self.robot_publisher.publish(roboPos)
-
-
-        # Submethod for obtaining the pointstamp necessary for rviz plotting.
-        def getPointForPublish(point):
-            # Get the waypoint in units.
-            waypoint = self.waypoints[point]
-            #print("waypoint: "+str(waypoint.x)+","+str(waypoint.y))
-            # Result as a PointStamp.
-            result_viz = PointStamped()
-            result_viz.point = waypoint
-            #result_viz.point.x = 1
-            #result_viz.point.y = -2
-            result_viz.header.stamp = rospy.Time()
-            result_viz.header.frame_id = "map"
-            return result_viz
 
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
@@ -311,7 +294,8 @@ class Pathfinding_Node:
             for i in range(0,self.waypoint_count):
                 x = x + dist*math.cos(2*math.pi/self.direction_count * direction)
                 y = y + dist*math.sin(2*math.pi/self.direction_count * direction)
-                self.waypoints[i] = Point(x,y,0)
+                self.waypoints[i].point = Point(x,y,0)
+                self.waypoints[i].theta = 2*math.pi/self.direction_count * direction
 
 
         # This method will create a new waypoint once the robot is within a certain distance
@@ -319,7 +303,7 @@ class Pathfinding_Node:
         def createNewWaypoint():
             print("new waypoint!")
             # Get the position of the last waypoint.            
-            end = self.waypoints[self.waypoint_count-1]
+            end = self.waypoints[self.waypoint_count-1].point
 
             # number of directions
             #self.direction_count = 6
@@ -359,14 +343,14 @@ class Pathfinding_Node:
                 dy = dist*math.sin(2*math.pi/self.direction_count * direction)
 
                 # Get the last waypoint for ease of calculations.
-                end = self.waypoints[self.waypoint_count-1]
+                end = self.waypoints[self.waypoint_count-1].point
 
                 # Check for duplicate points.
                 # TODO: think more like nearby points than exact matches?
                 duplicates = 0
                 for i in range(0, self.waypoint_count):
                     #rospy.loginfo("Point " + str(i) +"\nNew point: ("+str(end.x + dx)+","+str(end.y + dy)+")\nOld point: ("+str(self.waypoints.get(i).x)+","+str(self.waypoints.get(i).y)+")") 
-                    if end.x + dx == self.waypoints[i].x and end.y + dy == self.waypoints[i].y:
+                    if end.x + dx == self.waypoints[i].point.x and end.y + dy == self.waypoints[i].point.y:
                         rospy.loginfo("Match")     
                         duplicates = duplicates + 1
                     else:
@@ -404,8 +388,10 @@ class Pathfinding_Node:
                         rospy.loginfo("maximum > 0.7 (" + str(maximum) + ")")
                     else:
                         for i in range(0,self.waypoint_count-1):
-                            self.waypoints[i] = self.waypoints[i+1]
-                        self.waypoints[self.waypoint_count-1] = Point(end.x + dx, end.y + dy, 0)
+                            self.waypoints[i].point = self.waypoints[i+1].point
+                            self.waypoints[i].theta = self.waypoints[i+1].theta
+                        self.waypoints[self.waypoint_count-1].point = Point(end.x + dx, end.y + dy, 0)
+                        self.waypoints[self.waypoint_count-1].theta = 2*math.pi/self.direction_count * direction
                         isObstacle = 0
                         self.fails = 0
 
@@ -508,8 +494,8 @@ class Pathfinding_Node:
         self.reset = False
         # First, check for obstacles. If an obstacle is found between the robot and it's target, reset the path.
         # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
-        dx = self.odom.pose.pose.position.x - self.waypoints[0].x
-        dy = self.odom.pose.pose.position.y - self.waypoints[0].y
+        dx = self.odom.pose.pose.position.x - self.waypoints[0].point.x
+        dy = self.odom.pose.pose.position.y - self.waypoints[0].point.y
         diff = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
         if obstacleCheck():
             print("obstacle reset")
