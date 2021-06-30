@@ -131,16 +131,17 @@ class Camp_Map:
             #     return
             #print("x: " + str(x) + "y: " + str(y))
             #print(self.map.info.width)
-            if (x >= self.map.info.width):
+            expand_threshold = 50
+            if (x >= self.map.info.width - expand_threshold):
                 expand_map("+x")
                 print("expanded +x")
-            if (y >= self.map.info.height):
+            if (y >= self.map.info.height - expand_threshold):
                 expand_map("+y")
                 print("expanded +y")
-            if (x < 0):
+            if (x < expand_threshold):
                 expand_map("-x")
                 print("expanded -x")
-            if (y < 0):
+            if (y < expand_threshold):
                 expand_map("-y")
                 print("expanded -y")
 
