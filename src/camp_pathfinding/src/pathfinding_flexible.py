@@ -87,6 +87,7 @@ class Waypoint:
         # change the point to the adjusted point
         self.point.x = self.point.x + adjust_x
         self.point.y = self.point.y + adjust_y
+        print("points are " + str(left) + " and " + str(right) + " squares away on the left and right respectively")
         print("adjusted the point by "+str(adjust_x)+" x and "+str(adjust_y)+" y.")
         return [adjust_x,adjust_y]
     
