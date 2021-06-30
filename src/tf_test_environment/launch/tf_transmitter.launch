@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="tf_test_environment" type="tf_transmitter.py" name="transform_out" output="screen" />
+  
+  
+</launch>
