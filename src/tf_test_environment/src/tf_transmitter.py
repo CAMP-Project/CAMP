@@ -24,8 +24,12 @@ import tf2_ros
 class TF_Transmitter:
 
     def __init__(self):
-        print("This is temporary")
+        rospy.init_node('tf_transmitter', anonymous=False)
+        
+        # Might need to inlcude subscriptions.
 
+
+        
 
     def main(self):
         print("This is temprary")

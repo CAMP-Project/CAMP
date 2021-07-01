@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="coop_test" type="coop_publisher.py" name="publisher_test" output="screen" />
+  
+  
+</launch>
