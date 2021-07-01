@@ -163,7 +163,7 @@ class Camp_Map:
 
 
         def update_map(dist,scan_angle,robot_angle):
-            trustable_distance = 2
+            trustable_distance = 3
             #if dist == 0:
                 # no return (nearest object too far or reflection failed)
                 #print("thats a spicy 0!")
@@ -181,7 +181,7 @@ class Camp_Map:
                 while d < trustable_distance - self.map.info.resolution/2:
                     update_square(d,scan_angle,robot_angle,"free")
                     d = d + self.map.info.resolution
-            else: print("something went terribly wrong")
+            #else: print("something went terribly wrong")
 
 
         #self.map.data = [self.map.data[i] -(self.map.data[i] - 50)/50 for i in range(0,self.map.info.width * self.map.info.height)]
@@ -204,4 +204,4 @@ if __name__ == '__main__':
         path.main()
 
         # Run at 10 Hz.
-        rospy.sleep(1)
+        rospy.sleep(0.2)
