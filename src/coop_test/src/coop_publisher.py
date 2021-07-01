@@ -20,7 +20,7 @@ Change Log:
 """
 
 
-# Import functions for matrix operaions.
+# Imports.
 import roslib
 roslib.load_manifest('rospy')
 import rospy
@@ -65,8 +65,8 @@ class coop_publisher:
 
         # Increment the counters.
         if self.incrementList[0] >= 100:
-            for i in range(1, n):
-                self.incrementList[i - 1] = i
+            for i in range(0, n):
+                self.incrementList[i] = (i + 1)
         else:
             for i in range(0, n):
                 self.incrementList[i] += (i + 1)
