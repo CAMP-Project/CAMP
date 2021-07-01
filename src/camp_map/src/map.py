@@ -118,10 +118,10 @@ class Camp_Map:
             return robot_angle
             
 
-        def update_square(scan_dist,scan_angle,robot_angle,update_param):
-            p_m0_g0 = 0.7 #0.9 
+        def update_square(scan_dist,scan_angle,robot_angle,update_param,trust):
+            p_m0_g0 = trust #0.7 
             p_m1_g0 = 1-p_m0_g0 
-            p_m1_g1 = 0.7 #0.9 
+            p_m1_g1 = trust #0.7 
             p_m0_g1 = 1-p_m1_g1       
             # placeholder where the robot is always centered on the map.
             x = round((scan_dist*math.cos(scan_angle + robot_angle) + self.odom.pose.pose.position.x - self.map.info.origin.position.x)/self.map.info.resolution)
@@ -163,11 +163,24 @@ class Camp_Map:
 
 
         def update_map(dist,scan_angle,robot_angle):
-            d = 0
-            while d < dist:
-                update_square(d,scan_angle,robot_angle,"free")
-                d = d + self.map.info.resolution
-            update_square(d,scan_angle,robot_angle,"wall")
+            trustable_distance = 3
+            #if dist == 0:
+                # no return (nearest object too far or reflection failed)
+                #print("thats a spicy 0!")
+                
+            if dist > 0:
+                # reasonably certain case
+                d = 0
+                while d < dist - self.map.info.resolution/2:
+                    trust = 0.70 - d*0.05
+                    if trust < 0.51: trust = 0.51
+                    update_square(d,scan_angle,robot_angle,"free",trust)
+                    d = d + self.map.info.resolution
+                trust = 0.9 - dist*0.1
+                if trust < 0.51: trust = 0.51
+                update_square(dist,scan_angle,robot_angle,"wall",trust)
+            #else: print("something went terribly wrong")
+
 
         #self.map.data = [self.map.data[i] -(self.map.data[i] - 50)/50 for i in range(0,self.map.info.width * self.map.info.height)]
 
@@ -189,4 +202,4 @@ if __name__ == '__main__':
         path.main()
 
         # Run at 10 Hz.
-        rospy.sleep(1)
+        rospy.sleep(0.2)
