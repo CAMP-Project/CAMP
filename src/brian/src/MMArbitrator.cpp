@@ -327,3 +327,15 @@ std::string MMArbitrator::check_host(std::string s)
 
     return s;
 }
+
+void MMArbitrator::print_current_hosts()
+{
+    #ifdef DEBUG
+        int s = this->_available.size();
+        debug_print("{ ");
+        for (int i = 0; i < s; i++)
+            debug_print(this->_available.at(i) + " ");
+
+        debug_print(" }");
+    #endif
+}

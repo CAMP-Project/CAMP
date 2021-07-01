@@ -127,6 +127,8 @@ private:
 
     void debug_print(std::string);
 
+    void print_current_hosts();
+
     std::string check_host(std::string);
 };
 
