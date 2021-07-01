@@ -29,11 +29,11 @@ void poseCallback(const turtlesim::PoseConstPtr& msg) {
     transformStamped.header.frame_id = "world";
     transformStamped.child_frame_id = turtle_name;
     transformStamped.transform.translation.x = msg->x;
-    transformStamped.transform.translation.y = mag->y;
+    transformStamped.transform.translation.y = msg->y;
     transformStamped.transform.translation.z = 0.0;
     tf2::Quaternion q;
     q.setRPY(0, 0, msg->theta);
-    transformStemped.transform.rotation.x = q.x();
+    transformStamped.transform.rotation.x = q.x();
     transformStamped.transform.rotation.y = q.y();
     transformStamped.transform.rotation.z = q.z();
     transformStamped.transform.rotation.w = q.w();
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     }	
 
     ros::NodeHandle node;
-    ros::Subscriber sub = node.subscribe(turtle_name+"/pose", 10, &poseCallback)
+    ros::Subscriber sub = node.subscribe(turtle_name+"/pose", 10, &poseCallback);
 
 	ros::Rate loop_rate(10);
 
