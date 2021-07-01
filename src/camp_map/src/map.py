@@ -163,11 +163,26 @@ class Camp_Map:
 
 
         def update_map(dist,scan_angle,robot_angle):
-            d = 0
-            while d < dist:
-                update_square(d,scan_angle,robot_angle,"free")
-                d = d + self.map.info.resolution
-            update_square(d,scan_angle,robot_angle,"wall")
+            trustable_distance = 2
+            #if dist == 0:
+                # no return (nearest object too far or reflection failed)
+                #print("thats a spicy 0!")
+                
+            if dist > 0 and dist <= trustable_distance:
+                # reasonably certain case
+                d = 0
+                while d < dist - self.map.info.resolution/2:
+                    update_square(d,scan_angle,robot_angle,"free")
+                    d = d + self.map.info.resolution
+                update_square(dist,scan_angle,robot_angle,"wall")
+            elif dist > trustable_distance:
+                # less certain case
+                d = 0
+                while d < trustable_distance - self.map.info.resolution/2:
+                    update_square(d,scan_angle,robot_angle,"free")
+                    d = d + self.map.info.resolution
+            else: print("something went terribly wrong")
+
 
         #self.map.data = [self.map.data[i] -(self.map.data[i] - 50)/50 for i in range(0,self.map.info.width * self.map.info.height)]
 
