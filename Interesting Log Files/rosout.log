@@ -1,0 +1,147 @@
+
+
+1625176505.838498547  Node Startup
+1625176506.995369911 INFO /master_discovery [udp.py:502(UcastSocket.__init__)] [topics: /rosout, /master_discovery/linkstats, /master_discovery/changes] + Bind to specified unicast socket @(128.208.244.141:11511)
+1625176507.232268095 INFO /master_discovery [master_discovery.py:943(Discoverer.recv_udp_msg)] [topics: /rosout, /master_discovery/linkstats, /master_discovery/changes] Detected master discovery: http://128.208.244.141:11611
+1625176507.369798898 INFO /master_discovery [master_discovery.py:387(DiscoveredMaster._retrieve_masterinfo)] [topics: /rosout, /master_discovery/linkstats, /master_discovery/changes] Added master with ROS_MASTER_URI=http://128.208.244.141:11311/
+1625176507.520245075 INFO /master_discovery [master_discovery.py:943(Discoverer.recv_udp_msg)] [topics: /rosout, /master_discovery/linkstats, /master_discovery/changes] Detected master discovery: http://128.208.244.210:11611
+1625176507.735728979 WARN /master_discovery [master_discovery.py:378(DiscoveredMaster._retrieve_masterinfo)] [topics: /rosout, /master_discovery/linkstats, /master_discovery/changes] Master discovered with not known hostname ROS_MASTER_URI:='http://Panda:11311/'. Fix your network settings!
+1625176529.262247717 INFO /brian [/home/nanoone/CAMP/src/brian/src/brian.cpp:75(main)] [topics: /rosout] Looking for other Cores
+1625176530.062333707 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:225(master_state_callback)] [topics: /rosout] Somebody called the master state callback!!!
+1625176530.067365881 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: I AM: 128208244141
+1625176530.067431194 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:101(sync)] [topics: /rosout] Response Size: 2
+1625176530.067481091 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.067533696 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:119(sync)] [topics: /rosout] Host not found in list.
+1625176530.067606718 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:120(sync)] [topics: /rosout] Adding ROS Master 0 : panda
+1625176530.099808286 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.099902871 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:119(sync)] [topics: /rosout] Host not found in list.
+1625176530.100161418 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:120(sync)] [topics: /rosout] Adding ROS Master 1 : BCICAICEEBEB
+1625176530.130236750 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:150(sync)] [topics: /rosout] Available hosts: panda BCICAICEEBEB 
+1625176530.130309043 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:153(sync)] [topics: /rosout] End of initial sync
+1625176530.166124842 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.166190469 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.166247084 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.166307242 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.166349430 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.266524823 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.266600866 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.266657169 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.266706806 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.266759098 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.366081352 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.366149947 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.366203958 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.366660997 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.366736363 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.466084867 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.466170337 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.466226901 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.466280339 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.466323882 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.566109477 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.566260417 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.566649226 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.566961159 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.567280071 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.666045751 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.666187837 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.666304454 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.666412373 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.666522374 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.770960553 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.771872340 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.772485737 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.773054966 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.773586642 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.877641011 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.878175135 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.878740094 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.879289687 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.879843707 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176530.977729112 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176530.977915052 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176530.978093806 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.978311257 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176530.978471260 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.062368809 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:225(master_state_callback)] [topics: /rosout] Somebody called the master state callback!!!
+1625176531.072894051 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.073140878 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.073322704 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.073517708 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.073747503 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.168271181 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.168902598 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.169628757 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.170177569 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.170324603 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.271217458 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.271400325 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.271550901 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.271675174 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.271821270 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.372541101 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.372767303 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.372861732 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.372946264 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.373026266 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.469225703 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.469394664 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.469510916 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.469614407 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.469706440 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.569541411 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.569658809 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.569732248 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.569799072 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.569875428 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.673130199 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.673287650 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.673462966 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.673600052 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.673740210 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.770259705 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.770460646 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.770613669 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.770764766 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.771009666 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.871235061 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.871349542 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.871476940 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.871608244 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.871724705 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176531.971603583 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176531.971905567 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176531.972010673 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.972101040 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176531.972185260 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.073406922 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176532.073507861 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176532.073586248 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.073647291 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.073706823 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.173712214 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176532.174087273 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176532.174291651 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.174450925 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.174632335 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.273896305 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176532.274092038 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176532.274192821 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.274285271 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.274367824 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.376467992 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176532.376774196 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176532.377002845 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.377246444 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.377444208 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.474117767 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176532.474327250 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176532.474431731 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.474530848 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.474654392 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.574579676 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Host Disconnected
+1625176532.574731763 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Skipping this iteration
+1625176532.574946350 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.575240209 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: panda
+1625176532.575498026 INFO /brian [/home/nanoone/CAMP/src/brian/src/MMArbitrator.cpp:306(debug_print)] [topics: /rosout] DEBUG: Checkhost: 128.208.244.141
+1625176532.824965000 WARN /master_discovery [tcpros_base.py:355(TCPROSServer._tcp_server_callback)] [topics: /rosout, /master_discovery/linkstats, /master_discovery/changes] Inbound TCP/IP connection failed: connection from sender terminated before handshake header received. 0 bytes were received. Please check sender for additional details.
