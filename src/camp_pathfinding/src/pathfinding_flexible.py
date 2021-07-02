@@ -35,10 +35,12 @@
 
 # Package imports.
 import math
+from typing import type_check_only
 from geometry_msgs import msg
 import roslib
 import numpy as np;
 import rospy
+import cv2
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
@@ -105,7 +107,7 @@ class Pathfinding_Node:
     #--------------------------------------------------------------------------------------------------------------
     def __init__(self): 
         # number of directions to look when deciding on a direction
-        self.direction_count = 9
+        self.direction_count = 12
         #number of waypoints to generate
         self.waypoint_count = 4
 
@@ -268,6 +270,68 @@ class Pathfinding_Node:
 
             self.robot_publisher.publish(roboPos)
 
+        # This method replaces the resetWaypoints() function. It searches for a point of interest to travel to or uses the traditional reset function if a point of interest is already close by.
+        def reevaluate():
+            print("reevaluating...")
+            # prep the data
+            x = round(self.odom.pose.pose.position.x)
+            y = round(self.odom.pose.pose.position.y)
+            # check the current meter square to see if there is still interesting data to be found. a normal reset is performed if this is the case.
+            if poiCheck(x,y) > 0:
+                resetWaypoints()
+            else:
+                # in an increasing radius, check squares for poi potential. Give each square a value based on how often there are unknown and free areas touching and how far away it is. once a sufficiently valuable poi is found, stop.
+                rad = 3
+                max_poi = 0
+                size = 1/self.mapActual.info.resolution
+                width = self.mapActual.info.width
+                height = self.mapActual.info.height
+                while max_poi < size/2 and rad < max(width,height)*1.8:
+                    for m in range(-rad,rad+1):
+                        for n in range(-rad,rad+1):
+                            dist = m*m+n*n
+                            if dist <= rad:
+                                # this function makes it so an area with sixe or more edge points (out of size^2 pixels) has a value of size at distance 0 and 0.6*size at distance 10. 
+                                poi = min(poiCheck(x+m,y+n),size) * (0.5 + 0.5 * math.exp(-dist*4/25))
+                                if poi > max_poi:
+                                    # take the highest score and set it as the target
+                                    max_poi = poi
+                                    max_x = x+m
+                                    max_y = y+n
+                    rad = rad + 2
+                # TODO:                
+                # set waypoints to a path towards the target. if the target is unreachable, mark it as "explored"
+                # when you get to the target, set it's square as explored.
+        
+        def poiCheck(x,y):
+            size = 1/self.mapActual.info.resolution
+            x_origin =  self.mapActual.info.origin.x
+            y_origin =  self.mapActual.info.origin.y
+            width = self.mapActual.info.width
+            height = self.mapActual.info.height
+
+            xmin = round((x-0.5-x_origin)*size)
+            xmax = round((x+0.5-x_origin)*size)
+            ymin = round((y-0.5-y_origin)*size)
+            ymax = round((y+0.5-y_origin)*size)
+
+            # make two arrays, one of free space and one of occupied space.
+            free = []
+            free = [0 for i in range(0,size*size)]
+            wall = []
+            wall = [0 for i in range(0,size*size)]
+
+            for m in range(max(xmin,0),min(xmax,width-1)):
+                for n in range(max(ymin,0),min(ymax,width-1)):
+                    data = self.mapActual.data[m + n * width]
+                    if data < 10:
+                        free[m - xmax + (n - ymax) * width] = 1
+                    if data > 90:
+                        wall[m - xmax + (n - ymax) * width] = 1
+            
+            # TODO: morphological stuff here, this is the hard part.
+            score = 0
+            return score
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
         # to waypoint 1 or if all paths fail around waypoint 3.
