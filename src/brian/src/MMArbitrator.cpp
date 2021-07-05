@@ -224,12 +224,7 @@ void MMArbitrator::master_state_callback(const fkie_multimaster_msgs::MasterStat
     this->_my_state.state = ms->state;
     ROS_INFO("Somebody called the master state callback!!!");
     if (this->_current_name.empty())
-    {
-        this->_current_name = ms->master.name;
-        this->_current_name.erase(std::remove_if(this->_current_name.begin(), this->_current_name.end(),
-                                [](const char c)
-                                {return c=='.';}), this->_current_name.end());
-    }
+        this->_current_name = check_host(ms->master.name);
 }
 
 /**
