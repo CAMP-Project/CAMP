@@ -38,7 +38,7 @@ import math
 from typing import type_check_only
 from geometry_msgs import msg
 import roslib
-import numpy as np;
+import numpy as np
 import rospy
 import cv2
 roslib.load_manifest('rospy')
@@ -276,14 +276,14 @@ class Pathfinding_Node:
             # prep the data
             x = round(self.odom.pose.pose.position.x)
             y = round(self.odom.pose.pose.position.y)
+            size = 1/self.mapActual.info.resolution
             # check the current meter square to see if there is still interesting data to be found. a normal reset is performed if this is the case.
-            if poiCheck(x,y) > 0:
+            if poiCheck(x,y) > size:
                 resetWaypoints()
             else:
                 # in an increasing radius, check squares for poi potential. Give each square a value based on how often there are unknown and free areas touching and how far away it is. once a sufficiently valuable poi is found, stop.
                 rad = 3
                 max_poi = 0
-                size = 1/self.mapActual.info.resolution
                 width = self.mapActual.info.width
                 height = self.mapActual.info.height
                 while max_poi < size/2 and rad < max(width,height)*1.8:
@@ -299,10 +299,107 @@ class Pathfinding_Node:
                                     max_x = x+m
                                     max_y = y+n
                     rad = rad + 2
+                # now that a point of interest has been identified, we need to make waypoints leading to that POI.
+                # for now, lets assume the point is on navigable terrain.
+                # we will now pass the start and end info to our recursive pathfinding algorithm
+                path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],erode([self.mapActual.data,self.mapActual.info.width,self.mapActual.info.height],[[1 for i in range(9)],3,3]))
+                for i in range(0,len(path/2)):
+                    x = path[2*i]
+                    y = path[2*i+1]
+                    #TODO: make a bunch of waypoints, requires a review of waypoint infrastructure to allow for waypoint surges.
                 # TODO:                
-                # set waypoints to a path towards the target. if the target is unreachable, mark it as "explored"
+                #  if the target is unreachable, mark it as "explored"
                 # when you get to the target, set it's square as explored.
+
+        def makePath(path,map):
+            size = 1/self.mapActual.info.resolution
+            width = self.mapActual.info.width
+            height = self.mapActual.info.height
+            map = map[0]
+            # get the data and convert to grid squares
+            sx = path[0]
+            sy = path[1]
+            gx = path[2]
+            gy = path[3]
+            distance = math.sqrt((sx-gx)*(sx-gx)+(sy-gy)*(sy-gy))
+            if distance < 0.2:
+                # if endponts are already super close together, stop.
+                return path
+
+            # save a unit vector for ease of use later
+            dx = (gx-sx)/distance
+            dy = (gy-sy)/distance
+            # search for non-free space in the path. 
+            # Don't look too close to the POI because it could be in a wall or something
+            wall = 0
+            for i in range(0,round((distance-1)*size)):
+                if map[(meter2grid(sx,'x')+dx*i) + (meter2grid(sy,'y')+dy*i)*width] > 90:
+                    wall = 1
+                    break
+            if wall == 0:
+                return path
+
+            # expand each map until they overlap, 
+            # then set the overlap as an intermediary waypoint and repeat on both sides
+            startmap = []
+            goalmap = []
+            startmap = [0 for i in range(0,width*height)]
+            goalmap = [0 for i in range(0,width*height)]
+            startmap[meter2grid(sx,'x') + meter2grid(sy,'y')*width] = 1
+            goalmap[meter2grid(gx,'x') + meter2grid(gy,'y')*width] = 1
+            val = 0
+            overlap = 0
+            # build a circular kernel real quick
+            kernel = []
+            kernel = [0 for i in range(7*7)]
+            for i in range(7*7):
+                if (i%7-3)*(i%7-3) + (int(i/7)-3)*(int(i/7)-3) < 12:
+                    kernel[i] = 1
+
+            # keep looping until an overlap is found or the maps no longer change
+            while overlap == 0:
+                startmap = dialate(startmap,kernel)
+                goalmap = dialate(goalmap,kernel)
+                for m in range(width):
+                    for n in range(height):
+                        startmap[m+n*width] = startmap[m+n*width] and map[m+n*width]
+                        goalmap[m+n*width] = goalmap[m+n*width] and map[m+n*width]
+                        if (startmap[m+n*width] and goalmap[m+n*width]) == 1:
+                            overlap = 1
+                            mx = grid2meter(m,'x')
+                            my = grid2meter(n,'y')
+                            break
+                    if overlap == 1:
+                        break
+                newval = sum(startmap) + sum(goalmap)
+                if newval == val:
+                    # something needs to happen here so the POI gets shrown out, but i don't know how yet. maybe errors or exceptions?
+                    print("no path available")
+                    return
+            
+            # handle recursion
+            firsthalf = makePath([sx,sy,mx,my],map)
+            secondhalf = makePath([mx,my,gx,gy],map)
+            path = firsthalf + [secondhalf[i] for i in range(2,len(secondhalf))]
+            return path
+
         
+        # this function converts meters to grid squares
+        def meter2grid(n,param):
+            if param == 'x':
+                return round((n - self.mapActual.info.origin.x) / self.mapActual.info.resolution)
+            if param == 'y':
+                return round((n - self.mapActual.info.origin.y) / self.mapActual.info.resolution)
+
+        #this function does the opposite
+        def grid2meter(n,param):
+            if param == 'x':
+                return self.mapActual.info.origin.x + n * self.mapActual.info.resolution
+            if param == 'y':
+                return self.mapActual.info.origin.y + n * self.mapActual.info.resolution
+
+        # This function takes the square meter around a point on the map (in meters)
+        # and determines how many free spaces there are bu unknown spaces and away from walls.
         def poiCheck(x,y):
             size = 1/self.mapActual.info.resolution
             x_origin =  self.mapActual.info.origin.x
@@ -325,13 +422,84 @@ class Pathfinding_Node:
                 for n in range(max(ymin,0),min(ymax,width-1)):
                     data = self.mapActual.data[m + n * width]
                     if data < 10:
-                        free[m - xmax + (n - ymax) * width] = 1
+                        free[m - xmax + (n - ymax) * size] = 1
                     if data > 90:
-                        wall[m - xmax + (n - ymax) * width] = 1
+                        wall[m - xmax + (n - ymax) * size] = 1
             
-            # TODO: morphological stuff here, this is the hard part.
-            score = 0
-            return score
+            bigfree = dialate([free,size,size],[[1 for i in range(0,3*3)],3,3])
+            bigwall = dialate([wall,size,size],[[1 for i in range(0,7*7)],7,7])
+            result = []
+            result = [0 for i in range(size*size)]
+            for m in range(0,size):
+                for n in range(0,size):
+                    if bigfree[0][m+n*size] and not(bigwall[0][m+n*size] or free[m+n*size]):
+                        result[m+n*size] = 1
+            return sum(result)
+
+        # This function implements 2d convolution like in matlab. the map needs to be a list containing [data, width, height]. the submap function should return those values in that order
+        def conv2(map,kernel):
+            mapd = map[0]
+            mapw = map[1]
+            maph = map[2]
+            kerd = kernel[0]
+            kerw = kernel[1]
+            kerh = kernel[2]
+            outh = maph+kerh-1
+            outw = mapw+kerw-1
+            outd = []
+            outd = [0 for i in range(0,outw*outh)]
+            for m in range(0,mapw):
+                for n in range(0,maph):
+                    for i in range(0,kerw):
+                        for j in range(0,kerh):
+                            outd[m+i+(n+j)*outw] = outd[m+i+(n+j)*outw] + mapd[m+n*mapw] * kerd[i+j*kerw]
+            return [outd,outw,outh]
+
+        def erode(map,kernel):
+            temp = conv2(map,kernel)
+            startx = (kernel[1]-1)/2
+            starty = (kernel[2]-1)/2
+            endx = temp[1]-startx-1
+            endy = temp[2]-starty-1
+            temp = submap(temp,[startx,endx],[starty,endy])
+            kernelsum = sum(kernel[0])
+            outd = []
+            outd = [0 for i in range(0,temp[1]*temp[2])]
+            for m in range(0,temp[1]):
+                for n in range(0,temp[2]):
+                    if temp[0][m+n*temp[1]] == kernelsum:
+                        outd[m+n*temp[1]] = 1
+            return [outd,temp[1],temp[2]]
+
+        def dialate(map,kernel):
+            temp = conv2(map,kernel)
+            startx = (kernel[1]-1)/2
+            starty = (kernel[2]-1)/2
+            endx = temp[1]-startx-1
+            endy = temp[2]-starty-1
+            temp = submap(temp,[startx,endx],[starty,endy])
+            outd = []
+            outd = [0 for i in range(0,temp[1]*temp[2])]
+            for m in range(0,temp[1]):
+                for n in range(0,temp[2]):
+                    if temp[0][m+n*temp[1]] > 0:
+                        outd[m+n*temp[1]] = 1
+            return [outd,temp[1],temp[2]]
+
+
+        # This function takes the whole map data and splits it into a smaller section containing only range x = [x1,x2] and y = [y1,y2] in gridsquares.
+        # it returns [data,width,height] for use in conv2.
+        def submap(map,x,y):
+            mapd = map[0]
+            mapw = map[1]
+            width = max(x)-min(x)+1
+            height = max(y)-min(y)+1
+            dataout = []
+            dataout = [0 for i in range(0,width * height)]
+            for m in range(min(x),max(x)+1):
+                for n in range(min(y),max(y)+1):
+                    dataout((m - min(x)) + (n - max(y)) * width) = mapd[m+n*mapw]
+            return [dataout,width,height]
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
         # to waypoint 1 or if all paths fail around waypoint 3.
