@@ -25,6 +25,11 @@ MapParser mapParser;
 
 bool data_avail = false;
 
+/**
+ * @brief Callback function for the Lidar data
+ * 
+ * @param msg sensor_msgs::LaserScan pointer
+ */
 void msgCallback(const sensor_msgs::LaserScan::ConstPtr & msg)
 {
     angle_min = msg->angle_min;
@@ -43,6 +48,11 @@ void msgCallback(const sensor_msgs::LaserScan::ConstPtr & msg)
     // printf("\n");
 }
 
+/**
+ * @brief Callback function for reading the Map from the SLAM algorithm
+ * 
+ * @param msg nav_msgs::OccupancyGrid pointer
+ */
 void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr & msg)
 {
         mapParser.height = msg->info.height;
@@ -72,9 +82,11 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::Rate r(10);
 
+    // Launch the Data Arbitrator
     ROS_INFO("Looking for other Cores");
     MMArbitrator mma(n);
 
+    // Map Parser Code to output the current map into an image file on the current system's disk
     // ros::Subscriber lidar = n.subscribe("scan", 100, msgCallback);
 
     // ros::Subscriber map_sub = n.subscribe("map", 100, mapCallback);
@@ -105,11 +117,6 @@ int main(int argc, char **argv)
     }
 
     ROS_INFO("How did we get here?!?!");
-
-    // ros::spin();
-
-    // cout << "Height: " << mapParser.height << "\t Width: " << mapParser.width << endl;
-    // cout << "Hello, I am Brian" << endl;
 
     return 0;
 }

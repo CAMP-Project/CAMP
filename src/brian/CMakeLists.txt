@@ -72,10 +72,12 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   sensor_msgs#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  nav_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -109,7 +111,7 @@ add_service_files(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES brian
- CATKIN_DEPENDS roscpp sensor_msgs std_msgs
+ CATKIN_DEPENDS roscpp sensor_msgs std_msgs message_runtime
  DEPENDS system_lib
 )
 
