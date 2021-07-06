@@ -156,9 +156,7 @@ class Pathfinding_Node:
         self.fails = 0
 
         # Property which holds on to the satisfactory distance for when a new point should be generated.
-        self.satisDist = 1
-
-        self.createPoint = False
+        self.satisDist = 0.15 #meters
 
         self.entropyVector = [0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -303,9 +301,17 @@ class Pathfinding_Node:
                 # for now, lets assume the point is on navigable terrain.
                 # we will now pass the start and end info to our recursive pathfinding algorithm
                 path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],erode([self.mapActual.data,self.mapActual.info.width,self.mapActual.info.height],[[1 for i in range(9)],3,3]))
-                for i in range(0,len(path/2)):
+                self.waypoints = []
+                lx = path[0]
+                ly = path[1]
+                for i in range(2,len(path/2)):
                     x = path[2*i]
                     y = path[2*i+1]
+                    theta = math.atan2(y-ly,x-lx)
+                    self.waypoints[i] = Waypoint(i,x,y,theta)
+                    lx = x
+                    ly = y
+
                     #TODO: make a bunch of waypoints, requires a review of waypoint infrastructure to allow for waypoint surges.
                 # TODO:                
                 #  if the target is unreachable, mark it as "explored"
@@ -758,7 +764,7 @@ class Pathfinding_Node:
                 return True
         
         # Main functionality of the pathfinding code. 
-        newPoint = False  # For debug. Prints if the algorithm is currently calculating a new point.
+        self.newPoint = False  # For debug. Prints if the algorithm is currently calculating a new point.
         self.reset = False
         # First, check for obstacles. If an obstacle is found between the robot and it's target, reset the path.
         # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
@@ -774,7 +780,7 @@ class Pathfinding_Node:
             print(diff)
             resetWaypoints()
         else:
-            if diff < 0.15 and self.createPoint == False:
+            if diff < self.satisDist:
                 # when close enough to waypoint 0
                 # adjust the next waypoint
                 adjustment = self.waypoints[1].auto_adjust(self.mapActual)
@@ -782,9 +788,15 @@ class Pathfinding_Node:
                 for i in range(2,self.waypoint_count):
                     self.waypoints[i].quick_adjust(adjustment)
                 # create a new waypoint after adjustment
-                createNewWaypoint()
+                if len(self.waypoints) == self.waypoint_count:
+                    # if we are in explore mode, make a new waypoint at the end
+                    createNewWaypoint()
+                else:
+                    # otherwise, just delete the first one and push the rest down
+                    self.waypoints = [self.waypoints[i] for i in range(1,len(self.waypoints))]
+
                 self.newPoint = True
-            if newPoint == True and diff > 0.3:
+            if self.newPoint == True and diff > 0.3:
                 self.newPoint = False 
             if self.backupOld is True and self.backupNew is False:
                 print("backup reset")
