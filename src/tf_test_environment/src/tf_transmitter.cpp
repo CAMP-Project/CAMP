@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
         geometry_msgs::TransformStamped odom2PointTransform;
         geometry_msgs::PoseStamped roboInPointPose;
         try {
-            odom2PointTransform = tfb.lookupTransform("odom", "point", ros::Time(0));
+            odom2PointTransform = tfb.lookupTransform("map", "point", ros::Time(0));
             tf2::doTransform(roboPosition, roboInPointPose, odom2PointTransform);
         } catch (tf2::TransformException &ex) {
             ROS_WARN("%s", ex.what());
