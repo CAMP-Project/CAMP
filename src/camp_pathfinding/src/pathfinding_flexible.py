@@ -35,12 +35,9 @@
 
 # Package imports.
 import math
-from typing import type_check_only
-from geometry_msgs import msg
 import roslib
-import numpy as np
 import rospy
-import cv2
+import time
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
@@ -51,10 +48,18 @@ from sensor_msgs.msg import LaserScan
 from camp_goto.msg import Cmd
 
 class Waypoint:
-    def __init__(self,num,x=0,y=0,theta=0):
+    def __init__(self,num=-1,x=0,y=0,theta=0):
         self.point = Point(x,y,0)
         self.heading = theta
+        self.num = num
         self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
+
+    def __del__(self):
+        self.viz_publisher.unregister()
+
+    
+    def __str__(self):
+        return "Point "+str(self.num)+":("+str(self.point.x)+","+str(self.point.y)+") @ "+str(self.heading)
         
     def publish(self):
         # Result as a PointStamp.
@@ -69,8 +74,9 @@ class Waypoint:
         x = (self.point.x - map.info.origin.position.x)/map.info.resolution
         y = (self.point.y - map.info.origin.position.y)/map.info.resolution
         # set a unit vector normal to the heading
-        unit_x = math.cos(self.theta + math.pi/2)
-        unit_y = math.sin(self.theta + math.pi/2)
+        print(self.num)
+        unit_x = math.cos(self.heading + math.pi/2)
+        unit_y = math.sin(self.heading + math.pi/2)
         # initialize left and right at 1m (20 squares)
         left = 20
         right = 20
@@ -140,8 +146,7 @@ class Pathfinding_Node:
         
 
         # make waypoint_count number of waypoints
-        self.waypoints = []
-        self.waypoints = [Waypoint(i) for i in range(0,self.waypoint_count)]
+        self.waypoints = [Waypoint(0)]
 
         # Initialize important data types. For this script, we need access to the OccupancyGrid produced
         # by SLAM. We need the Lidar for obstacle detection. We need the odometry for positional data. 
@@ -230,18 +235,13 @@ class Pathfinding_Node:
 
         # Method for publishing waypoints to RQT. 
         def publishWaypoints():
-            # removed this because waypoints are now stored in meters
-            # # First get the waypoint, which is in units.
-            # waypoint = self.waypoints.get(1)
-            #
-            # # Calculate the waypoint in meters. Cannot use getPointForPublish method as it returns
-            # # a PointStamped. We want this published in a format that camp_goto to read: a Point.
-            # x = (self.mapActual.info.resolution * waypoint.x) + self.mapActual.info.origin.position.x
-            # y = (self.mapActual.info.resolution * waypoint.y) + self.mapActual.info.origin.position.y
-            # goTo = Point(x, y, waypoint.z)
 
             command = Cmd()
-            command.destination = self.waypoints[0].point
+            try:
+                command.destination = self.waypoints[0].point
+            except:
+                printWaypoints()
+                time.sleep(5)
             command.stop = False
             command.is_relative = False
             command.is_deca = False
@@ -272,43 +272,58 @@ class Pathfinding_Node:
         def reevaluate():
             print("reevaluating...")
             # prep the data
+            while self.mapActual.info.resolution == 0:
+                print('wait a sec...')
+                rospy.sleep(0.2)
             x = round(self.odom.pose.pose.position.x)
             y = round(self.odom.pose.pose.position.y)
             size = 1/self.mapActual.info.resolution
             # check the current meter square to see if there is still interesting data to be found. a normal reset is performed if this is the case.
+            print("first poicheck")
             if poiCheck(x,y) > size:
                 resetWaypoints()
             else:
                 # in an increasing radius, check squares for poi potential. Give each square a value based on how often there are unknown and free areas touching and how far away it is. once a sufficiently valuable poi is found, stop.
-                rad = 3
+                lastrad = 0
+                rad = 5
                 max_poi = 0
                 width = self.mapActual.info.width
                 height = self.mapActual.info.height
-                while max_poi < size/2 and rad < max(width,height)*1.8:
+                while max_poi < 1 and rad < max(width,height)*1.8:
                     for m in range(-rad,rad+1):
                         for n in range(-rad,rad+1):
                             dist = m*m+n*n
-                            if dist <= rad:
+                            if dist <= rad and dist > lastrad:
                                 # this function makes it so an area with sixe or more edge points (out of size^2 pixels) has a value of size at distance 0 and 0.6*size at distance 10. 
+                                #print("else poicheck")
+                                #print(str(x+m)+","+str(y+n))
                                 poi = min(poiCheck(x+m,y+n),size) * (0.5 + 0.5 * math.exp(-dist*4/25))
                                 if poi > max_poi:
                                     # take the highest score and set it as the target
                                     max_poi = poi
+                                    print("found max_poi")
+                                    print(max_poi)
                                     max_x = x+m
                                     max_y = y+n
-                    rad = rad + 2
+                    lastrad = rad
+                    rad = rad + 5
                 # now that a point of interest has been identified, we need to make waypoints leading to that POI.
                 # for now, lets assume the point is on navigable terrain.
                 # we will now pass the start and end info to our recursive pathfinding algorithm
                 path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],erode([self.mapActual.data,self.mapActual.info.width,self.mapActual.info.height],[[1 for i in range(9)],3,3]))
-                self.waypoints = []
+                self.waypoints = [Waypoint(77) for i in range(1,len(path)/2)]
+                print("all waypoints deleted")
                 lx = path[0]
                 ly = path[1]
-                for i in range(2,len(path/2)):
+                for i in range(1,len(path)/2):
                     x = path[2*i]
                     y = path[2*i+1]
                     theta = math.atan2(y-ly,x-lx)
-                    self.waypoints[i] = Waypoint(i,x,y,theta)
+                    print("new Waypoint")
+                    print(i)
+                    self.waypoints[i-1] = Waypoint(i-1,x,y,theta)
+                    print("waypoint length")
+                    print(len(self.waypoints))
                     lx = x
                     ly = y
 
@@ -316,9 +331,13 @@ class Pathfinding_Node:
                 # TODO:                
                 #  if the target is unreachable, mark it as "explored"
                 # when you get to the target, set it's square as explored.
+                
+        def printWaypoints():
+            for w in self.waypoints:
+                print(w)
 
         def makePath(path,map):
-            size = 1/self.mapActual.info.resolution
+            size = int(1/self.mapActual.info.resolution)
             width = self.mapActual.info.width
             height = self.mapActual.info.height
             map = map[0]
@@ -338,8 +357,8 @@ class Pathfinding_Node:
             # search for non-free space in the path. 
             # Don't look too close to the POI because it could be in a wall or something
             wall = 0
-            for i in range(0,round((distance-1)*size)):
-                if map[(meter2grid(sx,'x')+dx*i) + (meter2grid(sy,'y')+dy*i)*width] > 90:
+            for i in range(0,int(round((distance-1)*size))):
+                if self.mapActual.data[meter2grid(sx,'x')+int(round(dx*i)) + (meter2grid(sy,'y')+int(round(dy*i)))*width] > 90:
                     wall = 1
                     break
             if wall == 0:
@@ -363,7 +382,9 @@ class Pathfinding_Node:
                     kernel[i] = 1
 
             # keep looping until an overlap is found or the maps no longer change
+            gen = 0
             while overlap == 0:
+                print("gen:"+str(++gen))
                 startmap = dialate(startmap,kernel)
                 goalmap = dialate(goalmap,kernel)
                 for m in range(width):
@@ -393,30 +414,30 @@ class Pathfinding_Node:
         # this function converts meters to grid squares
         def meter2grid(n,param):
             if param == 'x':
-                return round((n - self.mapActual.info.origin.x) / self.mapActual.info.resolution)
+                return int(round((n - self.mapActual.info.origin.position.x) / self.mapActual.info.resolution))
             if param == 'y':
-                return round((n - self.mapActual.info.origin.y) / self.mapActual.info.resolution)
+                return int(round((n - self.mapActual.info.origin.position.y) / self.mapActual.info.resolution))
 
         #this function does the opposite
         def grid2meter(n,param):
             if param == 'x':
-                return self.mapActual.info.origin.x + n * self.mapActual.info.resolution
+                return self.mapActual.info.origin.position.x + n * self.mapActual.info.resolution
             if param == 'y':
-                return self.mapActual.info.origin.y + n * self.mapActual.info.resolution
+                return self.mapActual.info.origin.position.y + n * self.mapActual.info.resolution
 
         # This function takes the square meter around a point on the map (in meters)
         # and determines how many free spaces there are bu unknown spaces and away from walls.
         def poiCheck(x,y):
-            size = 1/self.mapActual.info.resolution
-            x_origin =  self.mapActual.info.origin.x
-            y_origin =  self.mapActual.info.origin.y
+            size = int(round(1/self.mapActual.info.resolution))
+            x_origin =  self.mapActual.info.origin.position.x
+            y_origin =  self.mapActual.info.origin.position.y
             width = self.mapActual.info.width
             height = self.mapActual.info.height
 
-            xmin = round((x-0.5-x_origin)*size)
-            xmax = round((x+0.5-x_origin)*size)
-            ymin = round((y-0.5-y_origin)*size)
-            ymax = round((y+0.5-y_origin)*size)
+            xmin = int(round((x-0.5-x_origin)*size))
+            xmax = int(round((x+0.5-x_origin)*size))
+            ymin = int(round((y-0.5-y_origin)*size))
+            ymax = int(round((y+0.5-y_origin)*size))
 
             # make two arrays, one of free space and one of occupied space.
             free = []
@@ -428,10 +449,10 @@ class Pathfinding_Node:
                 for n in range(max(ymin,0),min(ymax,width-1)):
                     data = self.mapActual.data[m + n * width]
                     if data < 10:
-                        free[m - xmax + (n - ymax) * size] = 1
+                        free[m - xmin + int((n - ymin) * size)] = 1
                     if data > 90:
-                        wall[m - xmax + (n - ymax) * size] = 1
-            
+                        wall[m - xmin + int((n - ymin) * size)] = 1
+            #print("poicheck")
             bigfree = dialate([free,size,size],[[1 for i in range(0,3*3)],3,3])
             bigwall = dialate([wall,size,size],[[1 for i in range(0,7*7)],7,7])
             result = []
@@ -462,6 +483,7 @@ class Pathfinding_Node:
             return [outd,outw,outh]
 
         def erode(map,kernel):
+            #print("eroding...")
             temp = conv2(map,kernel)
             startx = (kernel[1]-1)/2
             starty = (kernel[2]-1)/2
@@ -478,6 +500,7 @@ class Pathfinding_Node:
             return [outd,temp[1],temp[2]]
 
         def dialate(map,kernel):
+            #print("dialating...")
             temp = conv2(map,kernel)
             startx = (kernel[1]-1)/2
             starty = (kernel[2]-1)/2
@@ -502,9 +525,19 @@ class Pathfinding_Node:
             height = max(y)-min(y)+1
             dataout = []
             dataout = [0 for i in range(0,width * height)]
+            #print("submap")
             for m in range(min(x),max(x)+1):
                 for n in range(min(y),max(y)+1):
-                    dataout((m - min(x)) + (n - max(y)) * width) = mapd[m+n*mapw]
+                    #print("submap")
+                    #print(width * height)
+                    #print((m - min(x)) + (n - max(y)) * width)
+                    try:
+                        dataout[(m - min(x)) + (n - max(y)) * width] = mapd[m+n*mapw]
+                    except:
+                        print("dataout")
+                        print((m - min(x)) + (n - max(y)) * width)
+                        print("mapd")
+                        print(m+n*mapw)
             return [dataout,width,height]
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
@@ -564,11 +597,11 @@ class Pathfinding_Node:
             # Establish path as a series of new waypoints.
             x = self.odom.pose.pose.position.x
             y = self.odom.pose.pose.position.y
+            self.waypoints = [Waypoint() for i in range(0,self.waypoint_count)]
             for i in range(0,self.waypoint_count):
                 x = x + dist*math.cos(2*math.pi/self.direction_count * direction)
                 y = y + dist*math.sin(2*math.pi/self.direction_count * direction)
-                self.waypoints[i].point = Point(x,y,0)
-                self.waypoints[i].theta = 2*math.pi/self.direction_count * direction
+                self.waypoints[i] = Waypoint(x,y,2*math.pi/self.direction_count * direction)
 
 
         # This method will create a new waypoint once the robot is within a certain distance
@@ -576,7 +609,7 @@ class Pathfinding_Node:
         def createNewWaypoint():
             print("new waypoint!")
             # Get the position of the last waypoint.            
-            end = self.waypoints[self.waypoint_count-1].point
+            end = self.waypoints[len(self.waypoints)-1].point
 
             # number of directions
             #self.direction_count = 6
@@ -589,7 +622,7 @@ class Pathfinding_Node:
             entropyDirections = []
             entropyDirections = [0 for i in range(0,self.direction_count)]
             for i in range(0,self.direction_count):
-                print(i)
+                #print(i)
                 entropyDirections[i] = grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist - size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist + size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist - size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist + size/2)
                 + grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2)/9*0.1
                 #TODO: add more boxes
@@ -598,36 +631,32 @@ class Pathfinding_Node:
             isObstacle = 1
 
             while isObstacle == 1:
-                inc = 0
-                #test = 0
-                for x in entropyDirections:
-                    rospy.loginfo(str(inc)+": " +str(x))
-                    inc = inc + 1
+                # inc = 0
+                # #test = 0
+                # for x in entropyDirections:
+                #     rospy.loginfo(str(inc)+": " +str(x))
+                #     inc = inc + 1
 
                 # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
                 # The entropy tells the robot where the "highest reward" is.
                 # TODO: implement tiebreaker?
                 direction = entropyDirections.index(max(entropyDirections))   
 
-                rospy.loginfo("try:"+str(direction))           
+                #rospy.loginfo("try:"+str(direction))           
 
                 # Get the number of squares to increase in either direction depending on the calculated direction.
                 dx = dist*math.cos(2*math.pi/self.direction_count * direction)
                 dy = dist*math.sin(2*math.pi/self.direction_count * direction)
 
-                # Get the last waypoint for ease of calculations.
-                end = self.waypoints[self.waypoint_count-1].point
-
-                # Check for duplicate points.
-                # TODO: think more like nearby points than exact matches?
+                # Check for points within one dist
                 duplicates = 0
-                for i in range(0, self.waypoint_count):
+                for i in range(0, len(self.waypoints)):
                     #rospy.loginfo("Point " + str(i) +"\nNew point: ("+str(end.x + dx)+","+str(end.y + dy)+")\nOld point: ("+str(self.waypoints.get(i).x)+","+str(self.waypoints.get(i).y)+")") 
-                    if end.x + dx == self.waypoints[i].point.x and end.y + dy == self.waypoints[i].point.y:
-                        rospy.loginfo("Match")     
+                    if math.sqrt(math.pow(end.x + dx - self.waypoints[i].point.x,2) + math.pow(end.y + dy - self.waypoints[i].point.y,2)) < dist:
+                        #rospy.loginfo("Match")     
                         duplicates = duplicates + 1
-                    else:
-                        rospy.loginfo("No Match")
+                    #else:
+                        #rospy.loginfo("No Match")
 
                 # Connect the 3rd point and the theoretical last point.
                 yMin = min([end.y, end.y + dy])
@@ -638,6 +667,7 @@ class Pathfinding_Node:
                 # Check for bounds errors or if any duplicates exist. If so, restart the sweek by setting the entropy
                 # sum in that direction to 0. This will prevent that direction from being searched again since the 
                 # algorithm checks for the maximum entropy value.
+                #print("("+str(direction)+")")
                 if yMin < self.mapActual.info.origin.position.y + 1 or yMax >= self.mapActual.info.origin.position.y + self.mapActual.info.height*self.mapActual.info.resolution -1 or xMin < self.mapActual.info.origin.position.x + 1 or xMax >= self.mapActual.info.origin.position.x + self.mapActual.info.width*self.mapActual.info.resolution -1 or duplicates > 0:
                     if duplicates > 0:
                         rospy.loginfo("duplicates > 0 (" + str(duplicates) + ")")
@@ -655,29 +685,35 @@ class Pathfinding_Node:
                             self.region_publisher.publish(regionPos)
                             if map(i, j) > maximum:
                                 maximum = map(i, j)
-
                     if maximum > 70:
                         entropyDirections[direction] = 0
-                        rospy.loginfo("maximum > 0.7 (" + str(maximum) + ")")
+                        #rospy.loginfo("maximum > 70 (" + str(maximum) + ")")
+                        #TODO
                     else:
-                        for i in range(0,self.waypoint_count-1):
-                            self.waypoints[i].point = self.waypoints[i+1].point
-                            self.waypoints[i].theta = self.waypoints[i+1].theta
-                        self.waypoints[self.waypoint_count-1].point = Point(end.x + dx, end.y + dy, 0)
-                        self.waypoints[self.waypoint_count-1].theta = 2*math.pi/self.direction_count * direction
+                        self.waypoints = self.waypoints + [Waypoint(len(self.waypoints),end.x + dx, end.y + dy,2*math.pi/self.direction_count * direction)]
+                        printWaypoints()
                         isObstacle = 0
                         self.fails = 0
 
                 # Track number of fails.
                 self.fails = self.fails + 1
-                rospy.loginfo("Fails: " + str(self.fails))
+                #rospy.loginfo("Fails: " + str(self.fails))
 
-                if self.fails > 7:
+                if self.fails > self.direction_count:
                     print("fail reset")
-                    resetWaypoints()
+                    #reevaluate()
                     self.fails = 0
                     isObstacle = 0
 
+        def shiftWaypoints():
+            print("before the shift")
+            printWaypoints()
+            for i in range(0,len(self.waypoints)-1):
+                self.waypoints[i] = Waypoint(i,self.waypoints[i+1].point.x,self.waypoints[i+1].point.y,self.waypoints[i+1].heading)
+            self.waypoints = [self.waypoints[i] for i in range(0,len(self.waypoints)-1)]
+            print("after the shift")
+            printWaypoints()
+            time.sleep(0.5)
 
 
         # Method to calculate an entire region of entropy. Reduces the necessary lines of code to write.
@@ -686,6 +722,9 @@ class Pathfinding_Node:
             result = 0
 
             # convert all inputs to grid domain
+            while self.mapActual.info.resolution == 0:
+                print('wait a sec...')
+                rospy.sleep(0.2)
             range_x_1 = int(round((range_x_1 - self.mapActual.info.origin.position.x)/self.mapActual.info.resolution))
             range_x_2 = int(round((range_x_2 - self.mapActual.info.origin.position.x)/self.mapActual.info.resolution))
             range_y_1 = int(round((range_y_1 - self.mapActual.info.origin.position.y)/self.mapActual.info.resolution))
@@ -707,7 +746,7 @@ class Pathfinding_Node:
             # to regions that have not been explored.
             # rospy.loginfo(len(self.mapActual.data))
             #print("checking ("+str(x)+","+str(y)+")")
-            if self.mapActual.data[x + (self.mapActual.info.width * y)] < 0:
+            if self.mapActual.data[x + (self.mapActual.info.width * (min(y,self.mapActual.info.height-1)))] < 0:
                 return 50
             # Return.
             else:
@@ -717,7 +756,10 @@ class Pathfinding_Node:
         def entropy(x, y):
             #print("entropy("+str(x)+","+str(y)+")")
             # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
-            p = self.mapActual.data[x + (self.mapActual.info.width * y)]
+            try:
+                p = self.mapActual.data[x + (self.mapActual.info.width * (min(y,self.mapActual.info.height-1)))]
+            except:
+                print("error: tried to access ("+str(x)+","+str(y)+")")
             
             # If the value of the probability at the given index is negative, replace it with 0.5.
             # Note: this does not replace the value of the probability value in the OccupancyMap.
@@ -771,36 +813,41 @@ class Pathfinding_Node:
         dx = self.odom.pose.pose.position.x - self.waypoints[0].point.x
         dy = self.odom.pose.pose.position.y - self.waypoints[0].point.y
         diff = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
-        if obstacleCheck():
-            print("obstacle reset")
-            resetWaypoints()
-            self.reset = True
-        elif diff > 5:
-            print("diff > 5 reset")
-            print(diff)
-            resetWaypoints()
-        else:
-            if diff < self.satisDist:
-                # when close enough to waypoint 0
-                # adjust the next waypoint
+        # if obstacleCheck():
+        #     print("obstacle reset")
+        #     reevaluate()
+        #     self.reset = True
+        # elif diff > 5:
+        #     print("diff > 5 reset")
+        #     print(diff)
+        #     reevaluate()
+        # else:
+        #print("waypointCount")
+        #print(len(self.waypoints))
+        if len(self.waypoints) < self.waypoint_count:
+            createNewWaypoint()
+        if diff < self.satisDist:
+            # when close enough to waypoint 0
+            # adjust the next waypoint
+            if len(self.waypoints) > 1:
+                #print([str(self.waypoints[i]) for i in range(0,len(self.waypoints))])
                 adjustment = self.waypoints[1].auto_adjust(self.mapActual)
                 # do the adjustment on all the other waypoints after
-                for i in range(2,self.waypoint_count):
+                for i in range(2,min(self.waypoint_count,len(self.waypoints))):
                     self.waypoints[i].quick_adjust(adjustment)
-                # create a new waypoint after adjustment
-                if len(self.waypoints) == self.waypoint_count:
-                    # if we are in explore mode, make a new waypoint at the end
-                    createNewWaypoint()
-                else:
-                    # otherwise, just delete the first one and push the rest down
-                    self.waypoints = [self.waypoints[i] for i in range(1,len(self.waypoints))]
+            # create a new waypoint after adjustment
+            if len(self.waypoints) >= self.waypoint_count:
+                # if we are in explore mode, make a new waypoint at the end
+                createNewWaypoint()
+            # shift all waypoints so the first one goes away.
+            shiftWaypoints()
 
-                self.newPoint = True
+            self.newPoint = True
             if self.newPoint == True and diff > 0.3:
                 self.newPoint = False 
             if self.backupOld is True and self.backupNew is False:
                 print("backup reset")
-                resetWaypoints()
+                reevaluate()
         
         publishWaypoints()
         # ROS info for debugging. Prints the waypoints and boolean information regarding the algorithm's status.
