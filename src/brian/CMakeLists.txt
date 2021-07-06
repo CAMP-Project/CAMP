@@ -11,7 +11,10 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  geometry_msgs
+  nav_msgs
   fkie_multimaster_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -55,11 +58,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  RobotMapService.srv
+  RobotPositionService.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -104,10 +107,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES brian
-#  CATKIN_DEPENDS roscpp sensor_msgs std_msgs
-#  DEPENDS system_lib
+ INCLUDE_DIRS include
+ LIBRARIES brian
+ CATKIN_DEPENDS roscpp sensor_msgs std_msgs
+ DEPENDS system_lib
 )
 
 ###########
