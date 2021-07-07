@@ -29,6 +29,10 @@
 #include "fkie_multimaster_msgs/DiscoverMasters.h"
 #include "fkie_multimaster_msgs/MasterState.h"
 
+// Service headers
+#include "brian/RobotMapService.h"
+#include "brian/RobotPositionService.h"
+
 // Preprocessor Definitions
 #define DEBUG 1
 
@@ -44,7 +48,9 @@ public:
 
     void sync(ros::NodeHandle);
 
-    // void 
+    bool mapService(brian::RobotMapService::Request&, brian::RobotMapService::Response&);
+
+    bool positionService(brian::RobotPositionService::Request&, brian::RobotPositionService::Response&);
 
     ~MMArbitrator();
 private:

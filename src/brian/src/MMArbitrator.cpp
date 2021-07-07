@@ -154,6 +154,32 @@ void MMArbitrator::sync(ros::NodeHandle n)
 }
 
 /**
+ * @brief Map Service server function to reply to requests by sending a response back
+ * 
+ * @param req A std_msgs::String containing the name of the Robot of which you want the map of
+ * @param res A nav_msgs::OccupancyGrid containing the Map from the Robot
+ * @return true Service Successful 
+ * @return false Something went wrong
+ */
+bool MMArbitrator::mapService(brian::RobotMapService::Request & req, brian::RobotMapService::Response & res)
+{
+    return true;
+}
+
+/**
+ * @brief Position Service server function to reply to requests by sending a response back
+ * 
+ * @param req A std_msgs::String containing the name of the Robot of which you want the position of
+ * @param res A nav_msgs::OccupancyGrid containing the Map from the Robot
+ * @return true Service Successful 
+ * @return false Something went wrong
+ */
+bool MMArbitrator::positionService(brian::RobotPositionService::Request&, brian::RobotPositionService::Response&)
+{
+    return true;
+}
+
+/**
  * @brief Callback function for the positions subscribers
  * 
  * @param foo Index of the object to update

@@ -54,13 +54,14 @@ geometry_msgs::PoseStamped roboPosition;
 geometry_msgs::PoseStamped roboInPointPose;
 
 // TF2 Buffer.
-tf2_ros::Buffer tfb;
+tf2_ros::Buffer tfBuffer;
 
 
 // Callback for robot odometry.
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     odom_x = msg->pose.pose.position.x;
     odom_y = msg->pose.pose.position.y;
+    ROS_INFO("There is an update happening!");
 }
 
 void establishTransformInfo() {
@@ -88,7 +89,7 @@ int main(int argc, char** argv) {
     // ROS initialization stuff.
     ros::init(argc, argv, "tf_transmitter");
 	ros::NodeHandle nh;
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(1);
 
     // Subscribers.
     ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, &odomCallback);
@@ -132,7 +133,8 @@ int main(int argc, char** argv) {
         geometry_msgs::TransformStamped odom2PointTransform;
         geometry_msgs::PoseStamped roboInPointPose;
         try {
-            odom2PointTransform = tfb.lookupTransform("odom", "point", ros::Time(0));
+            tfBuffer.canTransform("point", "odom", ros::Time(0), ros::Duration(3.0));
+            odom2PointTransform = tfBuffer.lookupTransform("point", "odom", ros::Time(0));
             tf2::doTransform(roboPosition, roboInPointPose, odom2PointTransform);
         } catch (tf2::TransformException &ex) {
             ROS_WARN("%s", ex.what());
@@ -146,8 +148,8 @@ int main(int argc, char** argv) {
         float tf_x = roboInPointPose.pose.position.x;
         float tf_y = roboInPointPose.pose.position.y;
 
-        ROS_INFO("-------True Results-------\nTrue x:   %2.3f   True y:   %2.3f\n-------TF_2 Results-------\nTF2 x:   %2.3f   TF2 y:   %2.3f", true_x, true_y, tf_x, tf_y);
-
+        ROS_INFO("\n-------True Results-------\nTrue x:   %2.3f   True y:   %2.3f\n-------TF_2 Results-------\nTF2 x:   %2.3f   TF2 y:   %2.3f", true_x, true_y, tf_x, tf_y);
+        ros::spinOnce();
     }
     return 0;
 }

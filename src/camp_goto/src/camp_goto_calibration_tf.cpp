@@ -31,20 +31,20 @@ int max_point_modifier = 0;
 list<float> odom_x, odom_y, deca_x, deca_y;
 float odom_in_x = -999,odom_in_y,deca_in_x = -999,deca_in_y;
 
-
+// Callback for grabbing odometry information.
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-    //ROS_INFO("grabbing odom");
     odom_in_x = msg->pose.pose.position.x;
     odom_in_y = msg->pose.pose.position.y;
 }
+
+// Callback for grabbing Decawave Tag information.
 void tagCallback(const geometry_msgs::Twist::ConstPtr& msg) {
-    //ROS_INFO("grabbing tag");
     deca_in_x = msg->linear.x;
     deca_in_y = msg->linear.y;
 }
 
 // Mass coordinate vector commands
-void pushCoords(){
+void pushCoords() {
     odom_x.push_back(odom_in_x);
     odom_y.push_back(odom_in_y);
     deca_x.push_back(deca_in_x);
@@ -57,16 +57,15 @@ void pushCoords(){
     }
     max_point_modifier = 0;
 }
-void clearCoords(){
+void clearCoords() {
     odom_x.clear();
     odom_y.clear();
     deca_x.clear();
     deca_y.clear();
 }
 
-// The beefy part
-geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher,geometry_msgs::TransformStamped lastTransform){
-    // i think i said that odom is the input and deca is the output.
+// Method for computing new offsets to convert between the odometry frame and the decawave frame.
+geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, geometry_msgs::TransformStamped lastTransform) {
     geometry_msgs::Vector3 tr;
     std::list<float>::iterator ox, oy, dx, dy;
     float tx,ty,theta,last_theta,run;
@@ -154,6 +153,7 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher,ge
 
     }
 
+    ROS_INFO("I am reaching the publish point!");
     theta_0 = theta;
 
     tr.x = tx;
@@ -167,8 +167,8 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher,ge
     geometry_msgs::TransformStamped transformStamped;
 
     transformStamped.header.stamp = ros::Time::now();
-    transformStamped.header.frame_id = "deca";
-    transformStamped.child_frame_id = "odom";
+    transformStamped.header.frame_id = "odom";
+    transformStamped.child_frame_id = "deca";
     transformStamped.transform.translation.x = tx;
     transformStamped.transform.translation.y = ty;
     transformStamped.transform.translation.z = 0.0;
@@ -179,6 +179,8 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher,ge
     transformStamped.transform.rotation.z = q.z();
     transformStamped.transform.rotation.w = q.w();
 
+    ROS_INFO("I am reaching the broadcast point!");
+
     
     transformStamped.header.stamp = ros::Time::now();
     br.sendTransform(transformStamped);
@@ -186,7 +188,7 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher,ge
     return transformStamped;
 }
 
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
 	ros::init(argc, argv, "calibrator");
 	ros::NodeHandle nh;	
 	ros::Rate loop_rate(10);
@@ -194,8 +196,8 @@ int main(int argc, char **argv){
     geometry_msgs::TransformStamped transformStamped;
 
     transformStamped.header.stamp = ros::Time::now();
-    transformStamped.header.frame_id = "deca";
-    transformStamped.child_frame_id = "odom";
+    transformStamped.header.frame_id = "odom";
+    transformStamped.child_frame_id = "deca";
     transformStamped.transform.translation.x = 0.0;
     transformStamped.transform.translation.y = 0.0;
     transformStamped.transform.translation.z = 0.0;

@@ -1,0 +1,1 @@
+# Here is where the image processing methods will go!
