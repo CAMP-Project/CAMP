@@ -245,8 +245,9 @@ class Pathfinding_Node:
             try:
                 command.destination = self.waypoints[0].point
             except:
+                print("destination publish failed")
                 printWaypoints()
-                time.sleep(5)
+                exit()
             command.stop = False
             command.is_relative = False
             command.is_deca = False
@@ -288,13 +289,23 @@ class Pathfinding_Node:
             free = free//255
             wall = cv.inRange(map,80,100)
             wall = wall//255
+            print(free)
+            print(wall)
 
             bigfree = cv.dilate(free,np.ones((3,3), np.uint8))
             bigwall = cv.dilate(wall,np.ones((7,7), np.uint8))
+            print(bigfree)
+            print(bigwall)
             
             wallorfree = cv.bitwise_or(bigwall,free)
             notwallorfree = cv.bitwise_not(wallorfree)
+            notwallorfree = notwallorfree//255
             poimap = cv.bitwise_and(bigfree, bigfree, mask = notwallorfree)
+            print(wallorfree)
+            print(notwallorfree)
+            print(poimap)
+            
+
 
             #poilist = np.where(poimap == 1)
 
@@ -302,10 +313,18 @@ class Pathfinding_Node:
             y = self.odom.pose.pose.position.y
 
             # look for areas with many 1s on the poimap. we will start in a small radius and branch further
-            if np.sum(poimap[meter2grid(y-0.5,'y'):meter2grid(y+0.5,'y'),meter2grid(x-0.5,'x'):meter2grid(x+0.5,'x')]) >= 5:
+            nearmap = poimap[meter2grid(y-0.5,'y'):meter2grid(y+0.5,'y'),meter2grid(x-0.5,'x'):meter2grid(x+0.5,'x')]
+            nearsum = np.sum(nearmap)
+            print("how cool is the local square meter?")
+            print(x)
+            print(y)
+            print(nearmap)
+            print(nearsum)
+            if nearsum >= 5:
                 print("keep looking")
                 resetWaypoints()
             else:
+                print("time for a change")
                 lastrad = 0
                 rad = 5
                 max_poi = 0
@@ -330,8 +349,8 @@ class Pathfinding_Node:
                                     max_x = x+m
                                     max_y = y+n
                                     print("("+str(max_x)+","+str(max_y)+")")
-                                time.sleep(1)
-                    exit()
+                                #time.sleep(1)
+                    #exit()
                     lastrad = rad
                     rad = rad + 5
             # x = round(self.odom.pose.pose.position.x)
@@ -387,7 +406,7 @@ class Pathfinding_Node:
                     x = path[2*i]
                     y = path[2*i+1]
                     theta = math.atan2(y-ly,x-lx)
-                    print("new Waypoint")
+                    print("new path Waypoint")
                     print(i)
                     self.waypoints[i-1] = Waypoint(i-1,x,y,theta)
                     print("waypoint length")
@@ -450,7 +469,6 @@ class Pathfinding_Node:
             goalmap = cv.dilate(goalmap,cv.getStructuringElement(cv.MORPH_ELLIPSE,(25,25)))
             goalsum = np.sum(goalmap)
             print("goalsum: "+str(goalsum))
-            time.sleep(1)
 
             val = 0
             overlap = 0
@@ -489,8 +507,8 @@ class Pathfinding_Node:
                 if np.sum(overlapmap) >= 1:
                     overlap = 1
                     newpoint = np.where(overlapmap == 1)
-                    mx = grid2meter(newpoint[0][0],'x')
-                    my = grid2meter(newpoint[1][0],'y')
+                    mx = grid2meter(newpoint[1][0],'x')
+                    my = grid2meter(newpoint[0][0],'y')
                 # for m in range(width):
                 #     for n in range(height):
                 #         try:
@@ -514,16 +532,17 @@ class Pathfinding_Node:
                 print("startsum: "+str(startsum))
                 goalsum = np.sum(goalmap)
                 print("goalsum: "+str(goalsum))
-                newval = startsum + goalsum
-                if newval == 0:
+                if goalsum == 0:
+                    print(map[meter2grid(gy-0.5,'y'):meter2grid(gy+0.5,'y'),meter2grid(gx-0.5,'x'):meter2grid(gx+0.5,'x')])
+                    print(str(gx)+","+str(gy))
                     exit()
+                newval = startsum + goalsum
                 if newval == val:
                     # something needs to happen here so the POI gets shrown out, but i don't know how yet. maybe errors or exceptions?
                     print("no path available")
-                    time.sleep(5)
+                    exit()
                     return
                 val = newval
-                time.sleep(1)
             
             # handle recursion
             firsthalf = makePath([sx,sy,mx,my],map)
@@ -730,8 +749,13 @@ class Pathfinding_Node:
         # to waypoint 1.
         def createNewWaypoint():
             print("new waypoint!")
-            # Get the position of the last waypoint.            
-            end = self.waypoints[len(self.waypoints)-1].point
+            # Get the position of the last waypoint.
+            if len(self.waypoints)>0:
+                end = self.waypoints[len(self.waypoints)-1].point
+            else:
+                end = Point()
+                end.x = self.odom.pose.pose.position.x
+                end.y = self.odom.pose.pose.position.y
 
             # number of directions
             #self.direction_count = 6
@@ -834,7 +858,7 @@ class Pathfinding_Node:
             self.waypoints = [self.waypoints[i] for i in range(0,len(self.waypoints)-1)]
             # print("after the shift")
             # printWaypoints()
-            time.sleep(0.5)
+            #time.sleep(0.5)
 
 
         # Method to calculate an entire region of entropy. Reduces the necessary lines of code to write.
@@ -938,9 +962,13 @@ class Pathfinding_Node:
         self.reset = False
         # First, check for obstacles. If an obstacle is found between the robot and it's target, reset the path.
         # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
-        dx = self.odom.pose.pose.position.x - self.waypoints[0].point.x
-        dy = self.odom.pose.pose.position.y - self.waypoints[0].point.y
-        diff = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
+        #TODO: when there is only one point, this breaks (index 0 is out of range?)
+        if len(self.waypoints) > 0:
+            dx = self.odom.pose.pose.position.x - self.waypoints[0].point.x
+            dy = self.odom.pose.pose.position.y - self.waypoints[0].point.y
+            diff = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
+        else:
+            diff = 0
         # if obstacleCheck():
         #     print("obstacle reset")
         #     reevaluate()
