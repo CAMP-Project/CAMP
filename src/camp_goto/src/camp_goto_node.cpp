@@ -248,7 +248,7 @@ int main(int argc, char **argv){
         // pointToPoint();
 
         reset = somethingInFront();
-        if (reset > param.emg_stop + 0.1) backup = false;
+        if (reset > param.emg_stop + 0.3) backup = false;
         if (reset < param.emg_stop) backup = true;
         if (backup == false) {
             pointToPoint();
