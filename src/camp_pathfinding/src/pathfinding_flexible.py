@@ -361,7 +361,7 @@ class Pathfinding_Node:
                 # make the map a 2d array
                 map = np.array(self.mapActual.data, np.uint8).reshape(self.mapActual.info.height, self.mapActual.info.width, order='C')
                 freemap = cv.inRange(map,0,20)
-                kernel = np.ones((5,5), np.uint8)
+                kernel = np.ones((7,7), np.uint8)
                 freemap = cv.erode(freemap,kernel)
                 
                 path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],freemap)
@@ -456,6 +456,8 @@ class Pathfinding_Node:
                 print("gen:"+str(gen))
                 startmap = cv.dilate(startmap,kernel)
                 goalmap = cv.dilate(goalmap,kernel)
+                goalsum = np.sum(goalmap)
+                print("goalsum: "+str(goalsum))
 
                 # print(startmap)
                 # print(goalmap)
@@ -481,6 +483,7 @@ class Pathfinding_Node:
                 if goalsum == 0:
                     print(map[meter2grid(gy-0.5,'y'):meter2grid(gy+0.5,'y'),meter2grid(gx-0.5,'x'):meter2grid(gx+0.5,'x')])
                     print(str(gx)+","+str(gy))
+                    print("goalsum fail")
                     exit()
                 newval = startsum + goalsum
                 if newval == val:
@@ -610,8 +613,9 @@ class Pathfinding_Node:
             while isObstacle == 1:
                 # inc = 0
                 # #test = 0
-                # for x in entropyDirections:
-                #     rospy.loginfo(str(inc)+": " +str(x))
+                print("entropy values:")
+                for x in entropyDirections:
+                    print(x)
                 #     inc = inc + 1
 
                 # Find the direction to place a new waypoint. The square with the highest entropy is chosen.
