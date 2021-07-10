@@ -353,38 +353,6 @@ class Pathfinding_Node:
                     #exit()
                     lastrad = rad
                     rad = rad + 5
-            # x = round(self.odom.pose.pose.position.x)
-            # y = round(self.odom.pose.pose.position.y)
-            # size = 1/self.mapActual.info.resolution
-            # # check the current meter square to see if there is still interesting data to be found. a normal reset is performed if this is the case.
-            # print("first poicheck")
-            # if poiCheck(x,y) > size:
-            #     resetWaypoints()
-            # else:
-            #     # in an increasing radius, check squares for poi potential. Give each square a value based on how often there are unknown and free areas touching and how far away it is. once a sufficiently valuable poi is found, stop.
-            #     lastrad = 0
-            #     rad = 5
-            #     max_poi = 0
-            #     width = self.mapActual.info.width
-            #     height = self.mapActual.info.height
-            #     while max_poi < 1 and rad < max(width,height)*1.8:
-            #         for m in range(-rad,rad+1):
-            #             for n in range(-rad,rad+1):
-            #                 dist = m*m+n*n
-            #                 if dist <= rad and dist > lastrad:
-            #                     # this function makes it so an area with sixe or more edge points (out of size^2 pixels) has a value of size at distance 0 and 0.6*size at distance 10. 
-            #                     #print("else poicheck")
-            #                     #print(str(x+m)+","+str(y+n))
-            #                     poi = min(poiCheck(x+m,y+n),size) * (0.5 + 0.5 * math.exp(-dist*4/25))
-            #                     if poi > max_poi:
-            #                         # take the highest score and set it as the target
-            #                         max_poi = poi
-            #                         print("found max_poi")
-            #                         print(max_poi)
-            #                         max_x = x+m
-            #                         max_y = y+n
-            #         lastrad = rad
-            #         rad = rad + 5
 
                 # now that a point of interest has been identified, we need to make waypoints leading to that POI.
                 # for now, lets assume the point is on navigable terrain.
@@ -488,14 +456,10 @@ class Pathfinding_Node:
                 print("gen:"+str(gen))
                 startmap = cv.dilate(startmap,kernel)
                 goalmap = cv.dilate(goalmap,kernel)
-                # print("maps")
-                # print(np.where(startmap == 1))
 
-                # small_startmap = startmap[meter2grid(sy,'y')-10:meter2grid(sy,'y')-10,meter2grid(sx,'x')-10:meter2grid(sx,'x')+10]
-                # small_map = map[meter2grid(sy,'y')-10:meter2grid(sy,'y')-10,meter2grid(sx,'x')-10:meter2grid(sx,'x')+10]
-                print(startmap)
-                print(goalmap)
-                print(map)
+                # print(startmap)
+                # print(goalmap)
+                # print(map)
 
                 # TODO: something here is broken
                 startmap = cv.bitwise_and(startmap,startmap,mask=map)
@@ -509,25 +473,7 @@ class Pathfinding_Node:
                     newpoint = np.where(overlapmap == 1)
                     mx = grid2meter(newpoint[1][0],'x')
                     my = grid2meter(newpoint[0][0],'y')
-                # for m in range(width):
-                #     for n in range(height):
-                #         try:
-
-                #             startmap[m+n*width] = startmap[m+n*width] and map[m+n*width]
-                #             goalmap[m+n*width] = goalmap[m+n*width] and map[m+n*width]
-                #         except:
-                #             print("!!! somethign broke dude!!!")
-                #             print("w/h: "+str(width)+"/"+str(height))
-                #             print("m/n" + str(m)+"/"+str(n))
-                #             exit()
-
-                #         if (startmap[m+n*width] and goalmap[m+n*width]) == 1:
-                #             overlap = 1
-                #             mx = grid2meter(m,'x')
-                #             my = grid2meter(n,'y')
-                #             break
-                #     if overlap == 1:
-                #         break
+                    
                 startsum = np.sum(startmap)
                 print("startsum: "+str(startsum))
                 goalsum = np.sum(goalmap)
@@ -565,121 +511,6 @@ class Pathfinding_Node:
                 return self.mapActual.info.origin.position.x + n * self.mapActual.info.resolution
             if param == 'y':
                 return self.mapActual.info.origin.position.y + n * self.mapActual.info.resolution
-
-        # This function takes the square meter around a point on the map (in meters)
-        # and determines how many free spaces there are bu unknown spaces and away from walls.
-        # def poiCheck(x,y):
-
-        #     # make two arrays, one of free space and one of occupied space.
-        #     # free = []
-        #     # free = [0 for i in range(0,size*size)]
-        #     # wall = []
-        #     # wall = [0 for i in range(0,size*size)]
-        #     map = np.array(self.mapActual.data).reshape(self.mapActual.info.height, self.mapActual.info.width, order='C')
-        #     free = cv.inRange(map,0,20)
-        #     wall = cv.inRange(map,80,100)
-
-        #     # for m in range(max(xmin,0),min(xmax,width-1)):
-        #     #     for n in range(max(ymin,0),min(ymax,width-1)):
-        #     #         data = self.mapActual.data[m + n * width]
-        #     #         if data < 10:
-        #     #             free[m - xmin + int((n - ymin) * size)] = 1
-        #     #         if data > 90:
-        #     #             wall[m - xmin + int((n - ymin) * size)] = 1
-        #     #print("poicheck")
-
-        #     # bigfree = dilate([free,size,size],[[1 for i in range(0,3*3)],3,3])
-        #     # bigwall = dilate([wall,size,size],[[1 for i in range(0,7*7)],7,7])
-        #     bigfree = cv.dilate(free,np.ones((3,3)))
-        #     bigwall = cv.dilate(wall,np.ones((7,7)))
-        #     # result = []
-        #     # result = [0 for i in range(size*size)]
-        #     # for m in range(0,size):
-        #     #     for n in range(0,size):
-        #     #         if bigfree[0][m+n*size] and not(bigwall[0][m+n*size] or free[m+n*size]):
-        #     #             result[m+n*size] = 1
-        #     wallorfree = cv.bitwise_or(bigwall,free)
-        #     notwallorfree = cv.bitwise_not(wallorfree)
-        #     result = cv.bitwise_and(bigfree, bigfree, mask = notwallorfree)
-        #     return np.sum(result)
-
-        # This function implements 2d convolution like in matlab. the map needs to be a list containing [data, width, height]. the submap function should return those values in that order
-        # def conv2(map,kernel):
-        #     mapd = map[0]
-        #     mapw = map[1]
-        #     maph = map[2]
-        #     kerd = kernel[0]
-        #     kerw = kernel[1]
-        #     kerh = kernel[2]
-        #     outh = maph+kerh-1
-        #     outw = mapw+kerw-1
-        #     outd = []
-        #     outd = [0 for i in range(0,outw*outh)]
-        #     for m in range(0,mapw):
-        #         for n in range(0,maph):
-        #             for i in range(0,kerw):
-        #                 for j in range(0,kerh):
-        #                     outd[m+i+(n+j)*outw] = outd[m+i+(n+j)*outw] + mapd[m+n*mapw] * kerd[i+j*kerw]
-        #     return [outd,outw,outh]
-
-        # def erode(map,kernel):
-        #     #print("eroding...")
-        #     temp = conv2(map,kernel)
-        #     startx = (kernel[1]-1)/2
-        #     starty = (kernel[2]-1)/2
-        #     endx = temp[1]-startx-1
-        #     endy = temp[2]-starty-1
-        #     temp = submap(temp,[startx,endx],[starty,endy])
-        #     kernelsum = sum(kernel[0])
-        #     outd = []
-        #     outd = [0 for i in range(0,temp[1]*temp[2])]
-        #     for m in range(0,temp[1]):
-        #         for n in range(0,temp[2]):
-        #             if temp[0][m+n*temp[1]] == kernelsum:
-        #                 outd[m+n*temp[1]] = 1
-        #     return [outd,temp[1],temp[2]]
-
-        # def dilate(map,kernel):
-        #     #print("dialating...")
-        #     temp = conv2(map,kernel)
-        #     startx = (kernel[1]-1)/2
-        #     starty = (kernel[2]-1)/2
-        #     endx = temp[1]-startx-1
-        #     endy = temp[2]-starty-1
-        #     temp = submap(temp,[startx,endx],[starty,endy])
-        #     outd = []
-        #     outd = [0 for i in range(0,temp[1]*temp[2])]
-        #     for m in range(0,temp[1]):
-        #         for n in range(0,temp[2]):
-        #             if temp[0][m+n*temp[1]] > 0:
-        #                 outd[m+n*temp[1]] = 1
-        #     return [outd,temp[1],temp[2]]
-
-
-        # This function takes the whole map data and splits it into a smaller section containing only range x = [x1,x2] and y = [y1,y2] in gridsquares.
-        # it returns [data,width,height] for use in conv2.
-        # def submap(map,x,y):
-        #     mapd = map[0]
-        #     mapw = map[1]
-        #     width = max(x)-min(x)+1
-        #     height = max(y)-min(y)+1
-        #     dataout = []
-        #     dataout = [0 for i in range(0,width * height)]
-        #     #print("submap")
-        #     for m in range(min(x),max(x)+1):
-        #         for n in range(min(y),max(y)+1):
-        #             #print("submap")
-        #             #print(width * height)
-        #             #print((m - min(x)) + (n - max(y)) * width)
-        #             try:
-        #                 dataout[(m - min(x)) + (n - max(y)) * width] = mapd[m+n*mapw]
-        #             except:
-        #                 print("dataout")
-        #                 print((m - min(x)) + (n - max(y)) * width)
-        #                 print("mapd")
-        #                 print(m+n*mapw)
-        #                 time.sleep(5)
-        #     return [dataout,width,height]
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
         # to waypoint 1 or if all paths fail around waypoint 3.
