@@ -991,12 +991,12 @@ class Pathfinding_Node:
                 # do the adjustment on all the other waypoints after
                 for i in range(2,min(self.waypoint_count,len(self.waypoints))):
                     self.waypoints[i].quick_adjust(adjustment)
+            # shift all waypoints so the first one goes away.
+            shiftWaypoints()
             # create a new waypoint after adjustment
             if len(self.waypoints) >= self.waypoint_count:
                 # if we are in explore mode, make a new waypoint at the end
                 createNewWaypoint()
-            # shift all waypoints so the first one goes away.
-            shiftWaypoints()
 
             self.newPoint = True
             if self.newPoint == True and diff > 0.3:
