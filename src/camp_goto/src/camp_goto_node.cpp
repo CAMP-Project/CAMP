@@ -50,6 +50,7 @@ geometry_msgs::Twist vel_msg;
 float x_vel, z_ang_vel;
 float last_x=0, last_y=0;
 float go_x, go_y, go_distance, heading;
+float velocity_direction = 1;
 //Scan
 float angle_min, angle_max, angle_increment, scan_time, range_min, range_max;
 vector<float> ranges, intensities;
@@ -166,13 +167,15 @@ void updateLongPos(const camp_goto::Cmd::ConstPtr& msg){
 // This just checks if something is in front of the robot real fast.
 float somethingInFront() {
     float closest_front_object;
+    //set the front angle to 0 for positive direction, 180 for nagative direction
+    int front_angle = 90-90*velocity_direction;
     if(ranges.size() == 360){
         // Find how close the closest object is (55 front scans)
-        if (ranges.at(0) != 0) closest_front_object = ranges.at(0);
+        if (ranges.at(front_angle) != 0) closest_front_object = ranges.at(front_angle);
         else closest_front_object = 500;
         for(int i = 1; i < param.emeg_stop_angle; i++) {
-            if(ranges.at(i) < closest_front_object && ranges.at(i) != 0) closest_front_object = ranges.at(i);
-            if(ranges.at(360-i) < closest_front_object && ranges.at(360-i) != 0) closest_front_object = ranges.at(360-i);
+            if(ranges.at(front_angle+i) < closest_front_object && ranges.at(front_angle+i) != 0) closest_front_object = ranges.at(front_angle+i);
+            if(ranges.at(360-front_angle-i) < closest_front_object && ranges.at(360-front_angle-i) != 0) closest_front_object = ranges.at(360-front_angle-i);
         }
         return closest_front_object;
     } else {
@@ -183,27 +186,44 @@ float somethingInFront() {
  * This function navigates the robot to the point (go_x,go_y) based on the odometry.
  */
 void pointToPoint() {
+    // find the difference between the robot's actual heading and the heading it needs to get to the point.
     heading = odom_rot;
     float gx = go_x - odom_x;
     float gy = go_y - odom_y;
     float desired_heading = atan2(gy,gx);
+    // also find how far from the goal it is
     go_distance = sqrt(gx*gx+gy*gy);
     
+    // change any angles so that they are between -PI and PI
     float head_error = desired_heading - heading;
     while ((head_error > PI) || (head_error < 0-PI)) {
         if(head_error > PI) head_error = head_error - 2*PI;
         if(head_error < 0-PI) head_error = head_error + 2*PI;
     }
+
+    // to implement backwards movement, change angles to be between -pi/2 and pi/2, and set velocity direction to -1 for corrected angles.
+    velocity_direction = 1;
+    if(head_error > PI/2) {
+        head_error = head_error - PI;
+        velocity_direction = -1;
+    } 
+    if(head_error < 0-PI/2) {
+        head_error = head_error + PI;
+        velocity_direction = -1;
+    }
     //ROS_INFO("\ndes: %f\nhed: %f\nerr: %f",desired_heading,heading,head_error);
     
-    //TODO: implement better control
+    // set rotational speed relative to the heading error and correct for max speeds.
     z_ang_vel = 2.0*param.speed * head_error; // 2 seems to be a good Kp in matlab sims
     if(z_ang_vel > BURGER_MAX_ANG_VEL*param.speed) z_ang_vel = BURGER_MAX_ANG_VEL*param.speed;
     if(z_ang_vel < -BURGER_MAX_ANG_VEL*param.speed) z_ang_vel = -BURGER_MAX_ANG_VEL*param.speed;
+
+    // set forwrd/backwarty based on how accurate the heading is and the velocity direction
     //x_vel = BURGER_MAX_LIN_VEL*(0.5+0.5*(1-abs(head_error)/PI));
-    x_vel = BURGER_MAX_LIN_VEL*param.speed*(-0.1+1.1*(1-abs(head_error)/PI)); //this one should turn tighter. 
+    x_vel = BURGER_MAX_LIN_VEL*param.speed*(-0.1+1.1*(1-abs(head_error)/PI))*velocity_direction; //this one should turn tighter. 
     if(go_distance < param.dest_stop) {
         //stop if at a final point
+        // distance set in command message
         x_vel = 0; 
         z_ang_vel = 0;
     }
@@ -247,14 +267,37 @@ int main(int argc, char **argv){
         //Determine motor instructions from current point and the go vars
         // pointToPoint();
 
+        // determine if a backup is needed
         reset = somethingInFront();
         if (reset > param.emg_stop + 0.3) backup = false;
         if (reset < param.emg_stop) backup = true;
+        //if no backu is needed
         if (backup == false) {
+            //navigate as usual
             pointToPoint();
+        // if a backup is needed
         } else {
-            x_vel = -BURGER_MAX_LIN_VEL*param.speed;
-            z_ang_vel = 0;
+            //reverse direction temporarily for the somethignInFront test
+            velocity_direction = -velocity_direction;
+            //look in the new direction for obstacles
+            //if the path is clear,
+            if (somethingInFront() > param.emg_stop){
+                // fix velocity direction
+                velocity_direction = -velocity_direction;
+                //navigate as usual
+                pointToPoint();
+                // throw out forward direction and move backward in a straight line
+                x_vel = -velocity_direction*BURGER_MAX_LIN_VEL*param.speed;
+                //z_ang_vel = 0;
+            //if the path is not clear
+            } else {
+                // fix velocity direction
+                velocity_direction = -velocity_direction;
+                //return to normal navigation
+                pointToPoint();
+                // don't move forward or back, to prevent infinite stuck periods
+                x_vel = 0;
+            }
         }
         
         if(cmd.stop == true){
