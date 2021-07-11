@@ -13,6 +13,7 @@
   <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>camp_gmapping</exec_depend>
   <exec_depend>camp_goto</exec_depend>
   <exec_depend>camp_map</exec_depend>
   <exec_depend>camp_multiagent</exec_depend>
