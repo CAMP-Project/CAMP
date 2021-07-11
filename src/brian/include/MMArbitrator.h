@@ -58,7 +58,6 @@ public:
 private:
     // Map to hold all the subsribers
     // that are dynamically added to the system
-
     std::map<std::string, ros::Subscriber> _sub_map;
 
     // Multimaster entry point, this is how this system
@@ -83,18 +82,16 @@ private:
     std::vector<std::string> _available;
 
     // List of positions of all hosts on the network
-    // TODO: Populate std::map with data
-    std::map<std::string, geometry_msgs::Twist> _positions_map;
+    std::map<std::string, nav_msgs::Odometry> _positions_map;
 
     // What a name ay?
-    // TODO: Populate std::map with data
     std::map<std::string, nav_msgs::OccupancyGrid> _maps_map;
 
     // Information of the current host that is running this code
     fkie_multimaster_msgs::MasterState _my_state;
     std::string _current_name;
 
-    geometry_msgs::Twist _my_odom;
+    nav_msgs::Odometry _my_odom;
     nav_msgs::OccupancyGrid _my_map;
 
     // ROS Service servers
@@ -104,22 +101,22 @@ private:
     // TODO: Update callback functions to map host name to data
 
     // Odometry sub callback for multimaster
-    void mm_position_callback(std::string, const geometry_msgs::Twist::ConstPtr&);
+    void mm_position_callback(std::string, const nav_msgs::Odometry::ConstPtr&);
 
     // Odometry sub callback for local odometry
-    void _position_callback(const nav_msgs::Odometry::ConstPtr& pos);
+    void _position_callback(const nav_msgs::Odometry::ConstPtr&);
 
     // Map sub callback for multimaster
     void mm_map_callback(std::string, const nav_msgs::OccupancyGrid::ConstPtr&);
 
     // Map sub callback for local map
-    void _map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map);
+    void _map_callback(const nav_msgs::OccupancyGrid::ConstPtr&);
 
     // MasterState callback
-    void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms);
+    void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr&);
 
     // Compare a subscriber object to a string
-    bool _sub_comp(ros::Subscriber & obj, std::string name);
+    bool _sub_comp(ros::Subscriber&, std::string);
 
     // Compare a ROSMaster object to a string
     bool _host_comp(fkie_multimaster_msgs::ROSMaster, std::string);

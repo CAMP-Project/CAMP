@@ -52,7 +52,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
                 new_odom_name.append("/odom");
                 std::string new_map_name = this->_current_name;
                 new_map_name.append("/map");
-                this->_odom_pub = n.advertise<geometry_msgs::Twist>(new_odom_name, 10);
+                this->_odom_pub = n.advertise<nav_msgs::Odometry>(new_odom_name, 10);
                 this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10);
             }
             // Lets publish the current robot's information before grabbing other things
@@ -130,7 +130,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
                 if (this->_sub_map.find(new_host+"/odom") == this->_sub_map.end() || this->_sub_map.find(new_host+"/map") == this->_sub_map.end())
                 {
                     // Odom Subscriber for this host has not been setup yet. Let's set it up now.
-                    ros::Subscriber new_odom = n.subscribe<geometry_msgs::Twist>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (std::string)new_host+"/odom", _1));
+                    ros::Subscriber new_odom = n.subscribe<nav_msgs::Odometry>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (std::string)new_host+"/odom", _1));
                     // this->_subs.push_back(new_odom);
                     this->_sub_map.insert({new_host+"/odom", new_odom});
                     // Map Subscriber for this host has not been setup yet. Let's also set that up.
@@ -209,7 +209,7 @@ bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, br
     }
 
     // Search for the position data
-    std::map<std::string, geometry_msgs::Twist>::iterator it = this->_positions_map.find(req.name.data);
+    std::map<std::string, nav_msgs::Odometry>::iterator it = this->_positions_map.find(req.name.data);
 
     // If we didn't find it, do the following
     if (it == this->_positions_map.end())
@@ -229,15 +229,9 @@ bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, br
  * @param foo Index of the object to update
  * @param pos Twist object
  */
-void MMArbitrator::mm_position_callback(std::string s, const geometry_msgs::Twist::ConstPtr& pos)
+void MMArbitrator::mm_position_callback(std::string s, const nav_msgs::Odometry::ConstPtr& odom)
 {
-    std::map<std::string, geometry_msgs::Twist>::iterator it = this->_positions_map.find(s);
-    // Check if we aren't currently holding data for this map
-    if (it == this->_positions_map.end())
-        this->_positions_map.insert(std::make_pair(s,*pos.get()));
-    else
-        it->second = *pos.get();
-
+    this->_positions_map[s] = *odom.get();
     debug_print("Updated: "+s);
 }
 
@@ -261,12 +255,14 @@ void MMArbitrator::_position_callback(const nav_msgs::Odometry::ConstPtr& pos)
  */
 void MMArbitrator::mm_map_callback(std::string s, const nav_msgs::OccupancyGrid::ConstPtr& map)
 {
-    std::map<std::string, nav_msgs::OccupancyGrid>::iterator it = this->_maps_map.find(s);
-    // Check if we aren't currently holding data for this map
-    if (it == this->_maps_map.end())
-        this->_maps_map.insert(std::make_pair(s,*map.get()));
-    else
-        it->second = *map.get();
+    // std::map<std::string, nav_msgs::OccupancyGrid>::iterator it = this->_maps_map.find(s);
+    // // Check if we aren't currently holding data for this map
+    // if (it == this->_maps_map.end())
+    //     this->_maps_map.insert(std::make_pair(s,*map.get()));
+    // else
+    //     it->second = *map.get();
+
+    this->_maps_map[s] = *map.get();
 
     debug_print("Updated: "+s);
 }
@@ -278,9 +274,10 @@ void MMArbitrator::mm_map_callback(std::string s, const nav_msgs::OccupancyGrid:
  */
 void MMArbitrator::_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map)
 { 
-    this->_my_map.data = map->data;
-    this->_my_map.header = map->header;
-    this->_my_map.info = map->info;
+    this->_my_map = *map.get();
+    // this->_my_map.data = map->data;
+    // this->_my_map.header = map->header;
+    // this->_my_map.info = map->info;
 }
 
 /**
@@ -291,8 +288,9 @@ void MMArbitrator::_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map)
 void MMArbitrator::master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr& ms)
 {
     // Initialize the current name string if it is empty, no need to update it everytime this class is called.
-    this->_my_state.master = ms->master;
-    this->_my_state.state = ms->state;
+    // this->_my_state.master = ms->master;
+    // this->_my_state.state = ms->state;
+    this->_my_state = *ms.get();
     ROS_INFO("Somebody called the master state callback!!!");
     if (this->_current_name.empty())
         this->_current_name = check_host(ms->master.name);
