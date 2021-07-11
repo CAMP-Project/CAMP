@@ -17,7 +17,7 @@
     </include>
 
     <!--Launch the pathfinding node-->
-    <include file="$(find camp_pathfinding)/launch/pathfinding_test.launch"/>
+    <include file="$(find camp_pathfinding)/launch/pathfinding_base.launch"/>
 
     <!--Launch the camp goto node-->
     <!--include file="$(find camp_goto)/launch/camp_launch.launch"/-->

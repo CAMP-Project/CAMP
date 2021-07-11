@@ -540,20 +540,20 @@ class Pathfinding_Node:
         def entropy(x, y):
             # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
             p = self.mapActual.data[x + (self.mapActual.info.width * y)]
-            print(p)
+            #print(p)
             
             # If the value of the probability at the given index is negative, replace it with 0.5.
             # Note: this does not replace the value of the probability value in the OccupancyMap.
             if p < 0:
-                p = 0.5
-            print(p)
+                p = 50
+            #print(p)
             p = p / 102.0
             print(p)
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
-            print(p)
+            #print(p)
             # Return the entropy.
-            print((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
+            #print((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
             return ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
 
 
