@@ -604,7 +604,7 @@ class Pathfinding_Node:
             for i in range(0,self.direction_count):
                 #print(i)
                 entropyDirections[i] = grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist - size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist + size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist - size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist + size/2)
-                + grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2)/9*0.1
+                #+ grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2)/9*0.1
                 #TODO: add more boxes
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
@@ -700,7 +700,6 @@ class Pathfinding_Node:
         def grabEntropySquare(range_x_1, range_x_2, range_y_1, range_y_2):
             # Initialize the result of the scan.
             result = 0
-
             # convert all inputs to grid domain
             while self.mapActual.info.resolution == 0:
                 print('wait a sec...')
@@ -709,6 +708,7 @@ class Pathfinding_Node:
             range_x_2 = int(round((range_x_2 - self.mapActual.info.origin.position.x)/self.mapActual.info.resolution))
             range_y_1 = int(round((range_y_1 - self.mapActual.info.origin.position.y)/self.mapActual.info.resolution))
             range_y_2 = int(round((range_y_2 - self.mapActual.info.origin.position.y)/self.mapActual.info.resolution))
+            area = (-min(range_x_1, range_x_2)+max(range_x_1, range_x_2) + 1) * (-min(range_y_1, range_y_2)+max(range_y_1, range_y_2) + 1)
 
             # On the bounds of the given entropy region, calculate the total entropy.
             # added some extra brain to make sure we go biggest to smallest and to make the last value inclusive.
@@ -717,7 +717,7 @@ class Pathfinding_Node:
                     result = result + entropy(i, j)
 
             # Return.
-            return result
+            return result/area
                 
 
         # This method calculates and returns the entropy data at a given matrix coordinate.
@@ -735,18 +735,17 @@ class Pathfinding_Node:
         # Method to calculate the entropy at a given map index.
         def entropy(x, y):
             #print("entropy("+str(x)+","+str(y)+")")
-            # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
+            # First grab probability. Divide by 100.
             try:
-                p = self.mapActual.data[x + (self.mapActual.info.width * (min(y,self.mapActual.info.height-1)))]
+                p = self.mapActual.data[x + (self.mapActual.info.width * (min(y,self.mapActual.info.height-1)))]/100.0
             except:
-                print("error: tried to access ("+str(x)+","+str(y)+")")
+                print("error: tried to access ("+str(x)+","+str(y)+") and failed")
+                p = 0.5
             
             # If the value of the probability at the given index is negative, replace it with 0.5.
             # Note: this does not replace the value of the probability value in the OccupancyMap.
             if p < 0:
                 p = 0.5
-            
-            p = p / 102.0
 
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
