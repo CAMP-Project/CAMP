@@ -14,7 +14,6 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <turtlesim/Pose.h>
 //--------------------------------------------
 // Normal C++ Inclusions.
 #include <list>
