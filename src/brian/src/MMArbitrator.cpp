@@ -11,6 +11,10 @@ MMArbitrator::MMArbitrator(ros::NodeHandle n)
     this->_mm_entry_point = n.serviceClient<fkie_multimaster_msgs::DiscoverMasters>("master_discovery/list_masters");
     this->_master_state = n.subscribe("master_discovery/changes", 10, &MMArbitrator::master_state_callback, this);
 
+    // Set up Service servers with node
+    this->_map_service_server = n.advertiseService("robot_map_service", &MMArbitrator::mapService, this);
+    this->_pos_service_server = n.advertiseService("robot_pos_service", &MMArbitrator::positionService, this);
+    
     // Subscribe to the current robot's map and odometry
     this->_odom_sub = n.subscribe("odom", 10, &MMArbitrator::_position_callback, this);
     this->_map_sub = n.subscribe("map", 10, &MMArbitrator::_map_callback, this);
@@ -163,6 +167,26 @@ void MMArbitrator::sync(ros::NodeHandle n)
  */
 bool MMArbitrator::mapService(brian::RobotMapService::Request & req, brian::RobotMapService::Response & res)
 {
+    debug_print("Servicing map service for : " + req.name.data);
+
+    if (req.name.data == this->_current_name)
+    {
+        res.RESULT = this->_my_map;
+        return true;
+    }
+
+    // Search for the map data
+    std::map<std::string, nav_msgs::OccupancyGrid>::iterator it = this->_maps_map.find(req.name.data);
+
+    // If we didn't find it, do the following
+    if (it == this->_maps_map.end())
+    {
+        debug_print("Unable to service map call for host: " + req.name.data);
+        return false;
+    }
+
+    res.RESULT = _maps_map.at(req.name.data);
+
     return true;
 }
 
@@ -174,8 +198,28 @@ bool MMArbitrator::mapService(brian::RobotMapService::Request & req, brian::Robo
  * @return true Service Successful 
  * @return false Something went wrong
  */
-bool MMArbitrator::positionService(brian::RobotPositionService::Request&, brian::RobotPositionService::Response&)
+bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, brian::RobotPositionService::Response& res)
 {
+    debug_print("Servicing map service for : " + req.name.data);
+
+    if (req.name.data == this->_current_name)
+    {
+        res.RESULT = this->_my_odom;
+        return true;
+    }
+
+    // Search for the position data
+    std::map<std::string, geometry_msgs::Twist>::iterator it = this->_positions_map.find(req.name.data);
+
+    // If we didn't find it, do the following
+    if (it == this->_positions_map.end())
+    {
+        debug_print("Unable to service position call for host: " + req.name.data);
+        return false;
+    }
+
+    res.RESULT = _positions_map.at(req.name.data);
+
     return true;
 }
 
@@ -202,10 +246,11 @@ void MMArbitrator::mm_position_callback(std::string s, const geometry_msgs::Twis
  * 
  * @param pos Constant pointer to a Twist object
  */
-void MMArbitrator::_position_callback(const geometry_msgs::Twist::ConstPtr& pos)
+void MMArbitrator::_position_callback(const nav_msgs::Odometry::ConstPtr& pos)
 { 
-    this->_my_odom.linear = pos->linear;
-    this->_my_odom.angular = pos->angular;
+    // TODO: Fix the issues with the Subscriber and Publisher for Odometry information
+    // this->_my_odom = pos->twist;
+    // this->_my_odom.angular = pos->angular;
 }
 
 /**

@@ -12,10 +12,12 @@
 #include <ros/node_handle.h>
 #include <ros/subscriber.h>
 #include <ros/publisher.h>
+#include <ros/service_server.h>
 #include <ros/service_client.h>
 
 // ROS Messages
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 
 // Standard C/C++ Libraries
@@ -95,13 +97,17 @@ private:
     geometry_msgs::Twist _my_odom;
     nav_msgs::OccupancyGrid _my_map;
 
+    // ROS Service servers
+    ros::ServiceServer _map_service_server;
+    ros::ServiceServer _pos_service_server;
+
     // TODO: Update callback functions to map host name to data
 
     // Odometry sub callback for multimaster
     void mm_position_callback(std::string, const geometry_msgs::Twist::ConstPtr&);
 
     // Odometry sub callback for local odometry
-    void _position_callback(const geometry_msgs::Twist::ConstPtr& pos);
+    void _position_callback(const nav_msgs::Odometry::ConstPtr& pos);
 
     // Map sub callback for multimaster
     void mm_map_callback(std::string, const nav_msgs::OccupancyGrid::ConstPtr&);
