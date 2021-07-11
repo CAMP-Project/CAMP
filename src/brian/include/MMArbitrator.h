@@ -54,11 +54,8 @@ public:
 
     ~MMArbitrator();
 private:
-    // Vectors to hold all the subsribers and publishers
+    // Map to hold all the subsribers
     // that are dynamically added to the system
-
-    std::vector<ros::Subscriber> _subs;
-    std::vector<ros::Publisher> _pubs;
 
     std::map<std::string, ros::Subscriber> _sub_map;
 
@@ -84,12 +81,8 @@ private:
     std::vector<std::string> _available;
 
     // List of positions of all hosts on the network
-    std::vector<geometry_msgs::Twist> _positions;
     // TODO: Populate std::map with data
     std::map<std::string, geometry_msgs::Twist> _positions_map;
-
-    // List of maps of all hosts on the network 
-    std::vector<nav_msgs::OccupancyGrid> _maps;
 
     // What a name ay?
     // TODO: Populate std::map with data

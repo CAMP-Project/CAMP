@@ -285,9 +285,14 @@ bool MMArbitrator::_host_comp(fkie_multimaster_msgs::ROSMaster rm, std::string s
  */
 MMArbitrator::~MMArbitrator()
 {
+    for (auto const &pair: this->_positions_map)
+        debug_print("Key: " + pair.first);
+    
+    this->_sub_map.clear();
+    this->_positions_map.clear();
+    this->_maps_map.clear();
+
     this->_available.clear();
-    this->_positions.clear();
-    this->_maps.clear();
 }
 
 /**
