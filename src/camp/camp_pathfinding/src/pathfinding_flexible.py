@@ -53,11 +53,11 @@ from sensor_msgs.msg import LaserScan
 from camp_goto.msg import Cmd
 
 class Waypoint:
-    def __init__(self,num=-1,x=0,y=0,theta=0):
+    def __init__(self,pub='none',x=0,y=0,theta=0):
         self.point = Point(x,y,0)
         self.heading = theta
-        self.num = num
-        self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
+        self.viz_publisher = pub
+        # self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
 
     def __del__(self):
         self.viz_publisher.unregister()
@@ -67,12 +67,13 @@ class Waypoint:
         return "Point "+str(self.num)+":("+str(self.point.x)+","+str(self.point.y)+") @ "+str(self.heading)
         
     def publish(self):
-        # Result as a PointStamp.
-        result_viz = PointStamped()
-        result_viz.point = self.point
-        result_viz.header.stamp = rospy.Time()
-        result_viz.header.frame_id = "map"
-        self.viz_publisher.publish(result_viz)
+        if self.viz_publisher != 'none':
+            # Result as a PointStamp.
+            result_viz = PointStamped()
+            result_viz.point = self.point
+            result_viz.header.stamp = rospy.Time()
+            result_viz.header.frame_id = "map"
+            self.viz_publisher.publish(result_viz)
 
     def auto_adjust(self,map):
         # convert point from meters to grid squares (i don't int(round()) this because i do that in the l/r check)
@@ -146,12 +147,14 @@ class Pathfinding_Node:
 #         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
 #         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
 #         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
+        # self.pubs = [rospy.Publisher('waypoint_0', PointStamped, queue_size = 10),rospy.Publisher('waypoint_1', PointStamped, queue_size = 10),rospy.Publisher('waypoint_2', PointStamped, queue_size = 10),rospy.Publisher('waypoint_3', PointStamped, queue_size = 10)]
+        self.pubs = [rospy.Publisher('waypoint_'+str(i), PointStamped, queue_size = 10) for i in range(0,self.waypoint_count)]
         self.region_publisher = rospy.Publisher('region', PointStamped, queue_size = 10)
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
         
 
         # make waypoint_count number of waypoints
-        self.waypoints = [Waypoint(0)]
+        self.waypoints = [Waypoint('none')]
 
         # Initialize important data types. For this script, we need access to the OccupancyGrid produced
         # by SLAM. We need the Lidar for obstacle detection. We need the odometry for positional data. 
@@ -366,7 +369,7 @@ class Pathfinding_Node:
                 
                 path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],freemap)
 
-                self.waypoints = [Waypoint(77) for i in range(1,len(path)/2)]
+                self.waypoints = [Waypoint('none') for i in range(1,len(path)/2)]
                 print("all waypoints deleted")
                 lx = path[0]
                 ly = path[1]
@@ -376,7 +379,10 @@ class Pathfinding_Node:
                     theta = math.atan2(y-ly,x-lx)
                     print("new path Waypoint")
                     print(i)
-                    self.waypoints[i-1] = Waypoint(i-1,x,y,theta)
+                    if i-1 < self.waypoint_count:
+                        self.waypoints[i-1] = Waypoint(self.pubs[i-1],x,y,theta)
+                    else:
+                        self.waypoints[i-1] = Waypoint('none',x,y,theta)
                     print("waypoint length")
                     print(len(self.waypoints))
                     lx = x
@@ -572,11 +578,11 @@ class Pathfinding_Node:
             # Establish path as a series of new waypoints.
             x = self.odom.pose.pose.position.x
             y = self.odom.pose.pose.position.y
-            self.waypoints = [Waypoint(69) for i in range(0,self.waypoint_count)]
+            self.waypoints = [Waypoint('none') for i in range(0,self.waypoint_count)]
             for i in range(0,self.waypoint_count):
                 x = x + dist*math.cos(2*math.pi/self.direction_count * direction)
                 y = y + dist*math.sin(2*math.pi/self.direction_count * direction)
-                self.waypoints[i] = Waypoint(i,x,y,2*math.pi/self.direction_count * direction)
+                self.waypoints[i] = Waypoint(self.pubs[i],x,y,2*math.pi/self.direction_count * direction)
 
 
         # This method will create a new waypoint once the robot is within a certain distance
@@ -689,7 +695,11 @@ class Pathfinding_Node:
             # print("before the shift")
             # printWaypoints()
             for i in range(0,len(self.waypoints)-1):
-                self.waypoints[i] = Waypoint(i,self.waypoints[i+1].point.x,self.waypoints[i+1].point.y,self.waypoints[i+1].heading)
+                if i < self.waypoint_count:
+                    self.waypoints[i] = Waypoint(self.pubs[i],self.waypoints[i+1].point.x,self.waypoints[i+1].point.y,self.waypoints[i+1].heading)
+                else:
+                    self.waypoints[i] = Waypoint('none',self.waypoints[i+1].point.x,self.waypoints[i+1].point.y,self.waypoints[i+1].heading)
+                
             self.waypoints = [self.waypoints[i] for i in range(0,len(self.waypoints)-1)]
             # print("after the shift")
             # printWaypoints()
