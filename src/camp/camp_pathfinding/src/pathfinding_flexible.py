@@ -59,15 +59,15 @@ class Waypoint:
         self.viz_publisher = pub
         # self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
 
-    def __del__(self):
-        self.viz_publisher.unregister()
+    # def __del__(self):
+    #     self.viz_publisher.unregister()
 
     
     def __str__(self):
         return "Point "+str(self.num)+":("+str(self.point.x)+","+str(self.point.y)+") @ "+str(self.heading)
         
     def publish(self):
-        if self.viz_publisher != 'none':
+        if isinstance(self.viz_publisher, rospy.Publisher):
             # Result as a PointStamp.
             result_viz = PointStamped()
             result_viz.point = self.point
@@ -80,7 +80,6 @@ class Waypoint:
         x = (self.point.x - map.info.origin.position.x)/map.info.resolution
         y = (self.point.y - map.info.origin.position.y)/map.info.resolution
         # set a unit vector normal to the heading
-        print(self.num)
         unit_x = math.cos(self.heading + math.pi/2)
         unit_y = math.sin(self.heading + math.pi/2)
         # initialize left and right at 1m (20 squares)
@@ -295,7 +294,11 @@ class Pathfinding_Node:
             print(free)
             print(wall)
 
-            bigfree = cv.dilate(free,np.ones((3,3), np.uint8))
+            # perform opening before dialating the map
+            smallfree = cv.erode(free,np.ones((3,3), np.uint8))
+            openfree = cv.dilate(smallfree,np.ones((3,3), np.uint8))
+
+            bigfree = cv.dilate(openfree,np.ones((3,3), np.uint8))
             bigwall = cv.dilate(wall,np.ones((7,7), np.uint8))
             print(bigfree)
             print(bigwall)
@@ -508,18 +511,22 @@ class Pathfinding_Node:
 
         
         # this function converts meters to grid squares
-        def meter2grid(n,param):
+        def meter2grid(n,param='none'):
             if param == 'x':
                 return int(round((n - self.mapActual.info.origin.position.x) / self.mapActual.info.resolution))
             if param == 'y':
                 return int(round((n - self.mapActual.info.origin.position.y) / self.mapActual.info.resolution))
+            if param == 'none':
+                return int(round(n / self.mapActual.info.resolution))
 
         #this function does the opposite
-        def grid2meter(n,param):
+        def grid2meter(n,param='none'):
             if param == 'x':
                 return self.mapActual.info.origin.position.x + n * self.mapActual.info.resolution
             if param == 'y':
                 return self.mapActual.info.origin.position.y + n * self.mapActual.info.resolution
+            if param == 'none':
+                return int(round(n * self.mapActual.info.resolution))
 
         # This method resets the waypoints in the event of an obstacle preventing the traversal
         # to waypoint 1 or if all paths fail around waypoint 3.
@@ -609,8 +616,9 @@ class Pathfinding_Node:
             entropyDirections = [0 for i in range(0,self.direction_count)]
             for i in range(0,self.direction_count):
                 #print(i)
-                entropyDirections[i] = grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist - size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist + size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist - size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist + size/2)
+                #entropyDirections[i] = grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist - size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist + size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist - size/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist + size/2)
                 #+ grabEntropySquare(end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier - size*biggerboxmultiplier/2, end.y + math.sin(2*math.pi/self.direction_count * i)*dist*biggerboxmultiplier + size*biggerboxmultiplier/2)/9*0.1
+                entropyDirections[i] = grabEntropyCircle(size/2, end.x + math.cos(2*math.pi/self.direction_count * i)*dist, end.y + math.sin(2*math.pi/self.direction_count * i)*dist)
                 #TODO: add more boxes
             # Initialize a parameter to check if there is an obstacle between the 3rd waypoint and the generated waypoint.
             # It is assumed to be true that there is an obstacle between the points.
@@ -677,6 +685,10 @@ class Pathfinding_Node:
                         #rospy.loginfo("maximum > 70 (" + str(maximum) + ")")
                     else:
                         self.waypoints = self.waypoints + [Waypoint(len(self.waypoints),end.x + dx, end.y + dy,2*math.pi/self.direction_count * direction)]
+                        if len(self.waypoints) < self.waypoint_count:
+                            self.waypoints = self.waypoints + [Waypoint(self.pubs[len(self.waypoints)],end.x + dx, end.y + dy,2*math.pi/self.direction_count * direction)]
+                        else:
+                            self.waypoints = self.waypoints + [Waypoint('none',end.x + dx, end.y + dy,2*math.pi/self.direction_count * direction)]
                         #printWaypoints()
                         isObstacle = 0
                         self.fails = 0
@@ -732,6 +744,9 @@ class Pathfinding_Node:
 
         # Method to calculate a circular region of entropy. 
         def grabEntropyCircle(radius, center_x, center_y):
+            radius = meter2grid(radius)
+            center_x = meter2grid(center_x,'x')
+            center_y = meter2grid(center_y,'y')
             
             # Establish a reasonable set of bounds in which to examine data points. We do not
             # want to have to search through the entire occupancy grid for values. Expecially
@@ -746,8 +761,10 @@ class Pathfinding_Node:
             # In the bounds we created, determine if a point lies within the inscribed circle defined by
             # the given radius and center.
             for i in range(bound_x_left, bound_x_right + 1):
-                for j in range(bound_y_up, bound_y_down + 1):
-                    if math.sqrt(pow(i - center_x, 2) + pow(j - center_y, 2)) < radius:
+                for j in range(bound_y_down, bound_y_up + 1):
+                    test = math.sqrt(pow(i - center_x, 2) + pow(j - center_y, 2))
+                    #print(test)
+                    if test < radius:
                         area = area + 1
                         result = result + entropy(i, j)
 
