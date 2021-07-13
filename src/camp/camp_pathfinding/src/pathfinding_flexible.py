@@ -16,8 +16,9 @@
 # 5/5/2021  - Sean Carda: Finalized the code. It is entirely possible that more
 #                         edits will be necessary.
 #
-# 6/25/2021 - Tyler Pigott: Tried to fix the map extention error
+# 6/25/2021 - Tyler Pigott: Tried to fix the map extention error, did too much
 #
+# 7/13/2021 - Tyler Pigott: TODO:Time to change everything to the decawave system
 #
 #----------------------------------------------------------------------------------------
 
