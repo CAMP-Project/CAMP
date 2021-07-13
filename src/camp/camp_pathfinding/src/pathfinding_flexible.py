@@ -741,16 +741,18 @@ class Pathfinding_Node:
             bound_y_down = center_y - radius
             bound_y_up = center_y + radius
             result = 0
+            area = 0
 
             # In the bounds we created, determine if a point lies within the inscribed circle defined by
             # the given radius and center.
             for i in range(bound_x_left, bound_x_right + 1):
                 for j in range(bound_y_up, bound_y_down + 1):
                     if math.sqrt(pow(i - center_x, 2) + pow(j - center_y, 2)) < radius:
+                        area = area + 1
                         result = result + entropy(i, j)
 
             # Return result.
-            return result
+            return result/area
                 
 
         # This method calculates and returns the entropy data at a given matrix coordinate.
