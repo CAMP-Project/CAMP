@@ -73,7 +73,7 @@ class Waypoint:
             result_viz = PointStamped()
             result_viz.point = self.point
             result_viz.header.stamp = rospy.Time()
-            result_viz.header.frame_id = "map"
+            result_viz.header.frame_id = 'deca'
             self.viz_publisher.publish(result_viz)
 
     def auto_adjust(self,map):
@@ -253,7 +253,7 @@ class Pathfinding_Node:
                 exit()
             command.stop = False
             command.is_relative = False
-            command.is_deca = False
+            command.is_deca = True
 
             command.speed = 0.43
 
@@ -273,7 +273,7 @@ class Pathfinding_Node:
             roboPosY = getRoboMapPosition().y
             roboPos = PointStamped()
             roboPos.header.stamp = rospy.Time()
-            roboPos.header.frame_id = "map"
+            roboPos.header.frame_id = 'deca'
             roboPos.point = Point(roboPosX, roboPosY, 1)
 
             self.robot_publisher.publish(roboPos)
@@ -676,7 +676,7 @@ class Pathfinding_Node:
                             regionY = (yMax + yMin)/2
                             regionPos = PointStamped()
                             regionPos.header.stamp = rospy.Time()
-                            regionPos.header.frame_id = "map"
+                            regionPos.header.frame_id = 'deca'
                             regionPos.point = Point(regionX, regionY, 1)
                             self.region_publisher.publish(regionPos)
                             if map(i, j) > maximum:
