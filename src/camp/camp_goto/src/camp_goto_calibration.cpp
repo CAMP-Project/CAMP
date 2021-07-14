@@ -1,6 +1,8 @@
 /* 
 This function should be run in additioon to other nodes to calibrate the odom/deca conversion.
 Started 4/15/2021 by Tyler Pigott
+
+TODO: publish a poor transform even if data isn't available so stuff works.
 */
 
 #include <ros/ros.h>
