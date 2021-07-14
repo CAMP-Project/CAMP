@@ -28,7 +28,7 @@ int main(int argc, char **argv){
     	
 	while(ros::ok()) {
         cout << "Please enter an x coord, y coord, and speed.\n";
-        cout << "Decawave is lame, all these poitns are in absolute odometry.\n";
+        cout << "Decawave actually cool now, so all these poitns are in deca.\n";
         cout << "Recomended speed is 0.45. Speed of 0 stops the robot (obviously).\n";
         cin >> x >> y >> speed;
 		
@@ -39,7 +39,7 @@ int main(int argc, char **argv){
 		go_cmd.speed = speed;
 
 		go_cmd.stop = false;
-		go_cmd.is_deca = false;
+		go_cmd.is_deca = true;
 		go_cmd.is_relative = false;
 
 		go_cmd.destination_stop_distance = 0.08 * speed + 0.02;
