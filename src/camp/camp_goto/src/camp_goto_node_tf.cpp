@@ -1,5 +1,6 @@
 /*
  * This version of the camp_goto_node has TF2 built in. Look for more changes soon.
+ * TODO: rewrite so you are controling the decawave position (aquired through transforming odometry) is controlled to decawave points
  */
 
 // ROS Default Header File
@@ -9,6 +10,8 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Quaternion.h>
 #include <nav_msgs/Odometry.h>
@@ -62,6 +65,10 @@ float deca_x, deca_y;
 float tx=0, ty=0, theta=0;
 float decagoal_x, decagoal_y;
 
+// variables for holding the robot pose in odom and deca
+geometry_msgs::PoseStamped odomIn;
+geometry_msgs::PoseStamped decaOut;
+
 // CMD_VEL Publisher
 ros::Publisher cmd_publisher;
 ros::Publisher backup_publisher;
@@ -95,6 +102,8 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
 }
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     //ROS_INFO("grabbing odom");
+    odomIn.pose = msg->pose.pose;
+    odomIn.header = msg->header;
     odom_x = msg->pose.pose.position.x;
     odom_y = msg->pose.pose.position.y;
     double quatx= msg->pose.pose.orientation.x;
@@ -254,9 +263,6 @@ int main(int argc, char **argv){
 	signal(SIGINT, shutdown_robot);
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener(tfBuffer);
-    // Update to something like a pose, so rotation can be included
-    geometry_msgs::PointStamped odomIn;
-    geometry_msgs::PointStamped decaOut;
 	ros::Rate loop_rate(10);
 
 	ros::Subscriber scan_subscriber = nh.subscribe("scan", 10, scanCallback);
@@ -316,7 +322,7 @@ int main(int argc, char **argv){
             odomIn.header.stamp = ros::Time::now();
             try {
                 //while(tfBuffer.canTransform("deca","odom", ros::Time()));
-                decaOut = tfBuffer.transform<geometry_msgs::PointStamped>(odomIn,"deca", ros::Duration(0.1));
+                decaOut = tfBuffer.transform<geometry_msgs::PoseStamped>(odomIn,"deca", ros::Duration(1));
                 ROS_INFO("\ntf'd TOF estimate:(%3.3f,%3.3f)",decaOut.point.x,decaOut.point.y);
             } catch (tf2::TransformException &ex) {
                 ROS_WARN("%s",ex.what());
