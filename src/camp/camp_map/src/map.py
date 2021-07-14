@@ -6,10 +6,13 @@ import rospy
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Pose #Vector3, Point, PointStamped
+from geometry_msgs.msg import Pose, PoseStamped #Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 import tf
+
+import tf2_ros as tfr
+import tf2_geometry_msgs as tfgm
 
 class Camp_Map:
 
@@ -34,7 +37,7 @@ class Camp_Map:
         self.map = OccupancyGrid() 
         self.lidar = LaserScan()                         
         self.odom = Odometry()
-        self.map.header.frame_id = "map"
+        self.map.header.frame_id = "deca"
         self.map.header.seq  = 0
         self.map.info.resolution = 0.05
         self.map.info.width = 100
@@ -50,6 +53,10 @@ class Camp_Map:
         data = [50 for i in range(0,self.map.info.width * self.map.info.height)]
         self.map.data = data
 
+        self.tf_buffer = tfr.Buffer(rospy.Duration(1200.0)) #tf buffer length
+        self.tf_listener = tfr.TransformListener(self.tf_buffer)
+        self.deca_pose = PoseStamped()
+
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -63,6 +70,16 @@ class Camp_Map:
     # This method will grab information from the robot's odometry.
     def updateOdom(self, data):
         self.odom = data
+        # build a poseStamped for transforming
+        odom_pose = PoseStamped()
+        odom_pose.pose =  self.odom.pose.pose
+        odom_pose.header = self.odom.header
+
+        try:
+            transform = self.tf_buffer.lookup_transform('deca','odom',rospy.Time(0),rospy.Duration(1.0))
+        except Exception as x:
+            rospy.logwarn("transform goofed:\n%s",str(x))
+        self.deca_pose = tfgm.do_transform_pose(odom_pose, transform)
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -109,10 +126,10 @@ class Camp_Map:
 
         def get_robot_angle():
             #euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
-            quat = (self.odom.pose.pose.orientation.x,
-                    self.odom.pose.pose.orientation.y,
-                    self.odom.pose.pose.orientation.z,
-                    self.odom.pose.pose.orientation.w)
+            quat = (self.deca_pose.pose.orientation.x,
+                    self.deca_pose.pose.orientation.y,
+                    self.deca_pose.pose.orientation.z,
+                    self.deca_pose.pose.orientation.w)
             euler = tf.transformations.euler_from_quaternion(quat)
             robot_angle = euler[2]
             return robot_angle
@@ -124,8 +141,8 @@ class Camp_Map:
             p_m1_g1 = trust #0.7 
             p_m0_g1 = 1-p_m1_g1       
             # placeholder where the robot is always centered on the map.
-            x = round((scan_dist*math.cos(scan_angle + robot_angle) + self.odom.pose.pose.position.x - self.map.info.origin.position.x)/self.map.info.resolution)
-            y = round((scan_dist*math.sin(scan_angle + robot_angle) + self.odom.pose.pose.position.y - self.map.info.origin.position.y)/self.map.info.resolution)
+            x = round((scan_dist*math.cos(scan_angle + robot_angle) + self.deca_pose.pose.position.x - self.map.info.origin.position.x)/self.map.info.resolution)
+            y = round((scan_dist*math.sin(scan_angle + robot_angle) + self.deca_pose.pose.position.y - self.map.info.origin.position.y)/self.map.info.resolution)
 
             # if ((x >= self.map.info.width) or (y >= self.map.info.width) or (x < 0) or (y < 0)):
             #     return
