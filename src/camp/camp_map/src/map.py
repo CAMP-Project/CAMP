@@ -49,6 +49,7 @@ class Camp_Map:
         data = []
         data = [50 for i in range(0,self.map.info.width * self.map.info.height)]
         self.map.data = data
+        self.robot_angle = 0
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -59,16 +60,6 @@ class Camp_Map:
     # from the lidar node.
     def updateLidarScan(self, data):
         self.lidar = data
-
-    # This method will grab information from the robot's odometry.
-    def updateOdom(self, data):
-        self.odom = data
-
-
-    #--------------------------------------------------------------------------------------------------------------
-    # Main Functionality of the mapping algorithm
-    #--------------------------------------------------------------------------------------------------------------
-    def main(self):
         def expand_map(direction):
             expand_amount = 50
             xbuffer = 0
@@ -104,18 +95,6 @@ class Camp_Map:
             self.map.info.origin.position.z = 0
             
             self.map.data = newdata
-
-
-
-        def get_robot_angle():
-            #euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
-            quat = (self.odom.pose.pose.orientation.x,
-                    self.odom.pose.pose.orientation.y,
-                    self.odom.pose.pose.orientation.z,
-                    self.odom.pose.pose.orientation.w)
-            euler = tf.transformations.euler_from_quaternion(quat)
-            robot_angle = euler[2]
-            return robot_angle
             
 
         def update_square(scan_dist,scan_angle,robot_angle,update_param,trust):
@@ -185,14 +164,29 @@ class Camp_Map:
         #self.map.data = [self.map.data[i] -(self.map.data[i] - 50)/50 for i in range(0,self.map.info.width * self.map.info.height)]
 
         scan_angle = self.lidar.angle_min
-        robot_angle = get_robot_angle()
         for r in self.lidar.ranges:
-            update_map(r,scan_angle,robot_angle)
+            update_map(r,scan_angle,self.robot_angle)
             scan_angle = scan_angle + self.lidar.angle_increment
         # update_map(1,0)
-        self.map.header.seq = self.map.header.seq + 1
+
+    # This method will grab information from the robot's odometry.
+    def updateOdom(self, data):
+        self.odom = data
+        quat = (self.odom.pose.pose.orientation.x,
+                self.odom.pose.pose.orientation.y,
+                self.odom.pose.pose.orientation.z,
+                self.odom.pose.pose.orientation.w)
+        euler = tf.transformations.euler_from_quaternion(quat)
+        self.robot_angle = euler[2]
+
+
+    #--------------------------------------------------------------------------------------------------------------
+    # Main Functionality of the mapping algorithm
+    #--------------------------------------------------------------------------------------------------------------
+    def main(self):
         self.map.header.stamp = rospy.Time.now()
         self.map_publisher.publish(self.map)
+        
 
 
 # Trigger functionality. Run this script until the keyboardInterrupt is triggered.
@@ -202,4 +196,4 @@ if __name__ == '__main__':
         path.main()
 
         # Run at 10 Hz.
-        rospy.sleep(0.2)
+        rospy.sleep(0.3)
