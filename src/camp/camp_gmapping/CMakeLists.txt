@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(gmapping)
+project(camp_gmapping)
 
 find_package(catkin REQUIRED nav_msgs nodelet openslam_gmapping roscpp tf rosbag_storage)
 

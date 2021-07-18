@@ -1,5 +1,5 @@
 <package>
-  <name>gmapping</name>
+  <name>camp_gmapping</name>
   <version>1.4.2</version>
   <description>This package contains a ROS wrapper for OpenSlam's Gmapping. 
   The gmapping package provides laser-based SLAM (Simultaneous Localization and Mapping), 
