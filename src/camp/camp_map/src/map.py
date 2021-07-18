@@ -35,7 +35,6 @@ class Camp_Map:
         self.lidar = LaserScan()                         
         self.odom = Odometry()
         self.map.header.frame_id = "map"
-        self.map.header.seq  = 0
         self.map.info.resolution = 0.05
         self.map.info.width = 100
         self.map.info.height = 100
@@ -47,7 +46,7 @@ class Camp_Map:
         self.map.info.origin.orientation.z = 0
         self.map.info.origin.orientation.w = 0
         data = []
-        data = [50 for i in range(0,self.map.info.width * self.map.info.height)]
+        data = [-1 for i in range(0,self.map.info.width * self.map.info.height)]
         self.map.data = data
         self.robot_angle = 0
 
@@ -81,7 +80,7 @@ class Camp_Map:
                 new_height = new_height + expand_amount
 
             newdata = []
-            newdata = [50 for i in range(0,new_width * new_height)]
+            newdata = [-1 for i in range(0,new_width * new_height)]
             for m in range(0,old_width):
                 for n in range(0,old_height):
                     old_index = m + old_width * n
@@ -128,6 +127,8 @@ class Camp_Map:
             #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
             #print(index)
             prior = self.map.data[index]/100.0
+            if prior < 0:
+                prior = 0.5
             if update_param == "free":
                 post = prior*p_m0_g1/(p_m0_g0*(1-prior)+p_m0_g1*prior)
             elif update_param == "wall":
