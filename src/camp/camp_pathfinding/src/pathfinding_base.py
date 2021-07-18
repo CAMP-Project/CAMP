@@ -570,7 +570,7 @@ class Pathfinding_Node:
             if p < 0:
                 p = 50
             #print(p)
-            p = p / 102.0
+            p = p / 100.0
             print(p)
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
