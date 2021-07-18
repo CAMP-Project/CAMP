@@ -150,6 +150,7 @@ class Pathfinding_Node:
         self.pubs = [rospy.Publisher('waypoint_'+str(i), PointStamped, queue_size = 10) for i in range(0,self.waypoint_count)]
         self.region_publisher = rospy.Publisher('region', PointStamped, queue_size = 10)
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
+        self.poi_publisher = rospy.Publisher('poi_map', OccupancyGrid, queue_size = 10)
         
 
         # make waypoint_count number of waypoints
@@ -160,6 +161,22 @@ class Pathfinding_Node:
         self.mapActual = OccupancyGrid() 
         self.lidar = LaserScan()                         
         self.odom = Odometry()
+
+        self.poi = OccupancyGrid()
+        self.poi.header.frame_id = "map"
+        self.poi.info.resolution = 1
+        self.poi.info.width = 10
+        self.poi.info.height = 10
+        self.poi.info.origin.position.x = -self.poi.info.width/2*self.poi.info.resolution
+        self.poi.info.origin.position.y = -self.poi.info.height/2*self.poi.info.resolution
+        self.poi.info.origin.position.z = 0
+        self.poi.info.origin.orientation.x = 0
+        self.poi.info.origin.orientation.y = 0
+        self.poi.info.origin.orientation.z = 0
+        self.poi.info.origin.orientation.w = 0
+        data = []
+        data = [-1 for i in range(0,self.poi.info.width * self.poi.info.height)]
+        self.poi.data = data
 
         # This is a check to prevent the robot from conducting too many reset calculations at once.
         self.reset = False
@@ -262,6 +279,8 @@ class Pathfinding_Node:
 
             self.point_publisher.publish(command)
 
+            self.poi_publisher.publish(self.poi)
+
             # Publish the points in rviz.
             #print("publishing...")
             for w in self.waypoints:
@@ -276,6 +295,117 @@ class Pathfinding_Node:
             roboPos.point = Point(roboPosX, roboPosY, 1)
 
             self.robot_publisher.publish(roboPos)
+        
+        def expand_poi(direction):
+            expand_amount = 2
+            xbuffer = 0
+            ybuffer = 0
+            old_width = self.poi.info.width
+            new_width = old_width
+            old_height = self.poi.info.height
+            new_height = old_height
+
+            if direction == "+x":
+                new_width = new_width + expand_amount
+            if direction == "-x":
+                xbuffer = expand_amount
+                new_width = new_width + expand_amount
+            if direction == "+y":
+                new_height = new_height + expand_amount
+            if direction == "-y":
+                ybuffer = expand_amount
+                new_height = new_height + expand_amount
+
+            newdata = []
+            newdata = [-1 for i in range(0,new_width * new_height)]
+            for m in range(0,old_width):
+                for n in range(0,old_height):
+                    old_index = m + old_width * n
+                    new_index = (m + xbuffer) + new_width * (n + ybuffer)
+                    newdata[new_index] = self.poi.data[old_index]
+            
+            self.poi.info.width = new_width
+            self.poi.info.height = new_height
+            self.poi.info.origin.position.x = self.poi.info.origin.position.x - xbuffer * self.poi.info.resolution
+            self.poi.info.origin.position.y = self.poi.info.origin.position.y - ybuffer * self.poi.info.resolution
+            self.poi.info.origin.position.z = 0
+            
+            self.poi.data = newdata
+
+        def listPoi(x,y):
+            x = math.floor((x-self.poi.info.origin.position.x)/self.poi.info.resolution)
+            y = math.floor((y-self.poi.info.origin.position.y)/self.poi.info.resolution)
+
+            # if ((x >= self.poi.info.width) or (y >= self.poi.info.width) or (x < 0) or (y < 0)):
+            #     return
+            #print("x: " + str(x) + "y: " + str(y))
+            #print(self.poi.info.width)
+            expand_threshold = 0
+            while (x >= self.poi.info.width - expand_threshold):
+                expand_poi("+x")
+                print("expanded +x")
+            while (y >= self.poi.info.height - expand_threshold):
+                expand_poi("+y")
+                print("expanded +y")
+            while (x < expand_threshold):
+                expand_poi("-x")
+                print("expanded -x")
+            while (y < expand_threshold):
+                expand_poi("-y")
+                print("expanded -y")
+
+            index = int(x + self.poi.info.width * y)
+            #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
+            #print(index)
+
+            prior = self.poi.data[index]
+
+            if prior < 0:
+                # if the value has never been set, set it to 10
+                post = 10
+            elif prior < 30:
+                # increase the value by 10 until value 30
+                post = prior + 10
+            elif prior < 40:
+                # when the value is greater than 30, blacklist the point by setting the value to 100.
+                post = 100
+            elif prior > 50:
+                # slowly return the point to consideration
+                post = prior - 5
+            else:
+                # reset any points with value 50 to 0. 
+                post = 0
+
+            self.poi.data[index] = post
+
+        def checkPoi(x,y):
+            x = math.floor((x-self.poi.info.origin.position.x)/self.poi.info.resolution)
+            y = math.floor((y-self.poi.info.origin.position.y)/self.poi.info.resolution)
+            
+            expand_threshold = 0
+            while (x >= self.poi.info.width - expand_threshold):
+                expand_poi("+x")
+                print("expanded +x")
+            while (y >= self.poi.info.height - expand_threshold):
+                expand_poi("+y")
+                print("expanded +y")
+            while (x < expand_threshold):
+                expand_poi("-x")
+                print("expanded -x")
+            while (y < expand_threshold):
+                expand_poi("-y")
+                print("expanded -y")
+
+            index = int(x + self.poi.info.width * y)
+            #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
+            #print(index)
+
+            val = self.poi.data[index]
+            okay = True
+            if val >= 50:
+                okay = False
+
+            return okay
 
         # This method replaces the resetWaypoints() function. It searches for a point of interest to travel to or uses the traditional reset function if a point of interest is already close by.
         def reevaluate():
@@ -326,8 +456,9 @@ class Pathfinding_Node:
             print(y)
             print(nearmap)
             print(nearsum)
-            if nearsum >= 5:
+            if nearsum >= 5 and checkPoi(x,y):
                 print("keep looking")
+                listPoi(x,y)
                 resetWaypoints()
             else:
                 print("time for a change")
@@ -347,7 +478,7 @@ class Pathfinding_Node:
                                 print(poi_submap)
                                 poi_count = np.sum(poi_submap)
                                 poi_score = min(poi_count,10) * (0.5 + 0.5 * math.exp(-dist*4/25))
-                                if poi_score > max_poi:
+                                if poi_score > max_poi and checkPoi(x+m,y+n):
                                     # take the highest score and set it as the target
                                     max_poi = poi_score
                                     print("found max_poi")
@@ -369,6 +500,8 @@ class Pathfinding_Node:
                 freemap = cv.inRange(map,0,20)
                 kernel = np.ones((7,7), np.uint8)
                 freemap = cv.erode(freemap,kernel)
+
+                listPoi(max_x,max_y)
                 
                 path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],freemap)
 
