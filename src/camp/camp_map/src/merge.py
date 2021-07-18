@@ -69,9 +69,9 @@ class Camp_Merge:
 
     # This method will grab maps as they are published.
     def map_subscriber(self, data):
-        print("start!")
-        print(max(self.map.data))
-        print(min(self.map.data))
+        print("Data received!")
+        # print(max(self.map.data))
+        # print(min(self.map.data))
         self.maps_read = self.maps_read + 1
         self.read_map = True
         new_map =  data
@@ -184,14 +184,14 @@ class Camp_Merge:
                         ### MERGING FORMULA ###
                         # TODO: review asymmetry concerns, 0-handling.
                         result = int(round(old_value * math.pow(new_value*1.0/old_value,gamma)))
-                        if result == 63:
-                            print("got a 63!")
-                            print(old_value)
-                            print(new_value)
-                            print
+                        # if result == 63:
+                        #     print("got a 63!")
+                        #     print(old_value)
+                        #     print(new_value)
+                        #     print
                         out_map.data[m+diff_x + (n+diff_y) * out_map.info.width] = result
-            print(max(out_map.data))
-            print(min(out_map.data))
+            # print(max(out_map.data))
+            # print(min(out_map.data))
             return out_map
             
         def publish_map():
