@@ -145,6 +145,7 @@ add_executable(${PROJECT_NAME}_node_tf src/camp_goto_node_tf.cpp)
 add_executable(${PROJECT_NAME}_talker src/camp_goto_talker.cpp)
 add_executable(${PROJECT_NAME}_calibration src/camp_goto_calibration.cpp)
 add_executable(${PROJECT_NAME}_calibration_tf src/camp_goto_calibration_tf.cpp)
+add_executable(${PROJECT_NAME}_calibration_tf_test src/camp_goto_calibration_tf_test.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -155,6 +156,7 @@ set_target_properties(${PROJECT_NAME}_node_tf PROPERTIES OUTPUT_NAME node_tf PRE
 set_target_properties(${PROJECT_NAME}_talker PROPERTIES OUTPUT_NAME talker PREFIX "")
 set_target_properties(${PROJECT_NAME}_calibration PROPERTIES OUTPUT_NAME calibration PREFIX "")
 set_target_properties(${PROJECT_NAME}_calibration_tf PROPERTIES OUTPUT_NAME tf PREFIX "")
+set_target_properties(${PROJECT_NAME}_calibration_tf_test PROPERTIES OUTPUT_NAME tf_test PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -163,6 +165,7 @@ add_dependencies(${PROJECT_NAME}_node_tf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${c
 add_dependencies(${PROJECT_NAME}_talker ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_calibration ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_calibration_tf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_calibration_tf_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
@@ -178,6 +181,9 @@ target_link_libraries(${PROJECT_NAME}_calibration
   ${catkin_LIBRARIES}
 )
 target_link_libraries(${PROJECT_NAME}_calibration_tf
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(${PROJECT_NAME}_calibration_tf_test
   ${catkin_LIBRARIES}
 )
 

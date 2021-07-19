@@ -156,35 +156,18 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
     ROS_INFO("I am reaching the publish point!");
     theta_0 = theta;
 
+    // Collect information for offset publishing.
     tr.x = tx;
     tr.y = ty;
     tr.z = theta;
     ROS_INFO("pos offsets: (%f/%f)",tx,ty);
     ROS_INFO("Theta: %f",theta);
 	transform_publisher.publish(tr);
-    //tf2 stuff
-    static tf2_ros::TransformBroadcaster br;
-    geometry_msgs::TransformStamped transformStamped;
 
-    transformStamped.header.stamp = ros::Time::now();
-    transformStamped.header.frame_id = "odom";
-    transformStamped.child_frame_id = "deca";
-    transformStamped.transform.translation.x = tx;
-    transformStamped.transform.translation.y = ty;
-    transformStamped.transform.translation.z = 0.0;
-    tf2::Quaternion q;
-    q.setRPY(0, 0, theta);
-    transformStamped.transform.rotation.x = q.x();
-    transformStamped.transform.rotation.y = q.y();
-    transformStamped.transform.rotation.z = q.z();
-    transformStamped.transform.rotation.w = q.w();
+    // Use the same information for the TF2 broadcaster method.
+    broadcastTransform(tx, ty, theta);
 
-    ROS_INFO("I am reaching the broadcast point!");
-
-    
-    transformStamped.header.stamp = ros::Time::now();
-    br.sendTransform(transformStamped);
-
+    // Return the calculated transform from odometry to decawave pose.
     return transformStamped;
 }
 
@@ -210,7 +193,7 @@ void broadcastTransform(float tx, float ty, float theta) {
     transformStamped.transform.rotation.z = q.z();
     transformStamped.transform.rotation.w = q.w();
 
-    ROS_INFO("I am reaching the broadcast point!");
+    //ROS_INFO("I am reaching the broadcast point!");
 
     
     transformStamped.header.stamp = ros::Time::now();
