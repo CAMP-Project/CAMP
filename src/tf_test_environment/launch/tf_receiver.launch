@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="tf_test_environment" type="tf_receiver.py" name="tf_verify" output="screen" />
+  
+  
+</launch>

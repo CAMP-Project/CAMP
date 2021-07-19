@@ -153,7 +153,7 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
 
     }
 
-    ROS_INFO("I am reaching the publish point!");
+    //ROS_INFO("I am reaching the publish point!");
     theta_0 = theta;
 
     // Collect information for offset publishing.
@@ -164,8 +164,28 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
     ROS_INFO("Theta: %f",theta);
 	transform_publisher.publish(tr);
 
-    // Use the same information for the TF2 broadcaster method.
-    broadcastTransform(tx, ty, theta);
+    // Instantiate a broadcast node and a stamped transform.
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped transformStamped;
+
+    // Fill the stamped transform with the appropriate translational information.
+    transformStamped.header.stamp = ros::Time::now(); // Timestamp.
+    transformStamped.header.frame_id = "odom";        // Parent frame id.
+    transformStamped.child_frame_id = "deca";         // Child framd id.
+    transformStamped.transform.translation.x = tx;    // Translation in the x direction.
+    transformStamped.transform.translation.y = ty;    // Translation in the y direction.
+    transformStamped.transform.translation.z = 0.0;
+    
+    // Fill the stamped transform with the appropriate rotational information.
+    tf2::Quaternion q; 
+    q.setRPY(0, 0, theta); // Specify the quaternion.
+    transformStamped.transform.rotation.x = q.x();
+    transformStamped.transform.rotation.y = q.y();
+    transformStamped.transform.rotation.z = q.z();
+    transformStamped.transform.rotation.w = q.w();
+
+    //ROS_INFO("I am reaching the broadcast point!");
+    br.sendTransform(transformStamped);
 
     // Return the calculated transform from odometry to decawave pose.
     return transformStamped;
@@ -194,9 +214,6 @@ void broadcastTransform(float tx, float ty, float theta) {
     transformStamped.transform.rotation.w = q.w();
 
     //ROS_INFO("I am reaching the broadcast point!");
-
-    
-    transformStamped.header.stamp = ros::Time::now();
     br.sendTransform(transformStamped);
 }
 
@@ -241,7 +258,7 @@ int main(int argc, char **argv) {
             // Do this if there are enough points to do a conversion
             if(odom_x.size() >= min_point_count){
                 ROS_INFO("Publishing (new)...");
-                getOffsets(transform_publisher,transformStamped);
+                getOffsets(transform_publisher, transformStamped);
             } else {
                 broadcastTransform(0.0, 0.0, 0.0);
             }
