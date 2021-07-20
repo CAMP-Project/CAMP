@@ -114,14 +114,20 @@ class Camp_Map:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
         def expand_map(direction):
+            # The amount the map will expand in grid squares.
             expand_amount = 50
+
+            # How much space that will be added to the x and y directions of the map.
             xbuffer = 0
             ybuffer = 0
+
+            # Dimensions of the map (old and new).
             old_width = self.map.info.width
             new_width = old_width
             old_height = self.map.info.height
             new_height = old_height
 
+            # Depending on the directions to expand, set the parameters accordingly.
             if direction == "+x":
                 new_width = new_width + expand_amount
             if direction == "-x":
@@ -133,7 +139,10 @@ class Camp_Map:
                 ybuffer = expand_amount
                 new_height = new_height + expand_amount
 
+            # The new map.
             newdata = []
+
+            # Fill the new map with the data in the old map.
             newdata = [50 for i in range(0,new_width * new_height)]
             for m in range(0,old_width):
                 for n in range(0,old_height):
@@ -141,16 +150,16 @@ class Camp_Map:
                     new_index = (m + xbuffer) + new_width * (n + ybuffer)
                     newdata[new_index] = self.map.data[old_index]
             
+            # Update the current map parameters.
             self.map.info.width = new_width
             self.map.info.height = new_height
             self.map.info.origin.position.x = self.map.info.origin.position.x - xbuffer * self.map.info.resolution
             self.map.info.origin.position.y = self.map.info.origin.position.y - ybuffer * self.map.info.resolution
             self.map.info.origin.position.z = 0
-            
             self.map.data = newdata
 
 
-
+        # Returns the robot angle in the Decawave frame.
         def get_robot_angle():
             #euler = tf.transformations.euler_from_quaternion(self.odom.pose.pose.orientation)
             quat = (self.deca_pose.pose.orientation.x,
@@ -162,6 +171,7 @@ class Camp_Map:
             return robot_angle
             
 
+        # Given lidar data and the scan and robot angles, update one map index.
         def update_square(scan_dist,scan_angle,robot_angle,update_param,trust):
             p_m0_g0 = trust #0.7 
             p_m1_g0 = 1-p_m0_g0 
@@ -206,15 +216,16 @@ class Camp_Map:
             self.map.data[index] = int(post * 100)
 
 
+        # Updates one direction of the map given a lidar scan angle and the distance of the measurement.
         def update_map(dist,scan_angle,robot_angle):
-            trustable_distance = 3
-            #if dist == 0:
-                # no return (nearest object too far or reflection failed)
-                #print("thats a spicy 0!")
-                
+            
+            # For all distances after the distance of the robot, update those respective map indices. 
             if dist > 0:
-                # reasonably certain case
+                
+                # Distance incrementer.
                 d = 0
+
+                # While d is less than the measured distance, update map indices.
                 while d < dist - self.map.info.resolution/2:
                     trust = 0.70 - d*0.05
                     if trust < 0.51: trust = 0.51
