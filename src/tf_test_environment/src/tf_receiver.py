@@ -142,24 +142,24 @@ class TF_Receiver:
         odomPose = computePose(self.odom_x, self.odom_y, 0.0, 'odom')
 
         # Then, calculate the pose of the Turtlebot in the decawave frame. 
-        odomInDecaPose = transformActions(odomPose, 'deca', 'odom', 'pose')
+        odomInDecaPose = transformActions(odomPose, 'odom', 'deca', 'pose')
 
         # Also, grab the approximate transform used during the pose transformation.
-        transformUsed = transformActions(odomPose, 'deca', 'odom', 'transform') 
+        transformUsed = transformActions(odomPose, 'odom', 'deca', 'transform') 
 
         # Compare calculated Deca to actual Deca data.
         print("Calculated Deca = { x = " + str(odomInDecaPose.pose.position.x) +
-                                         " y = " + str(odomInDecaPose.pose.position.y))
+                                        " y = " + str(odomInDecaPose.pose.position.y))
         print("Actual Deca     = { x = " + str(self.deca_x) +
-                                         " y = " + str(self.deca_y))
+                                        " y = " + str(self.deca_y))
         
         # Compare the retrieved transform to the published transform.
         print("TF Tree Transform   = { x = " + str(transformUsed.transform.translation.x) +
-                                             " y = " + str(transformUsed.transform.translation.y) +
-                                             " h = " + str(transformUsed.transform.rotation.z)) 
+                                            " y = " + str(transformUsed.transform.translation.y) +
+                                            " h = " + str(transformUsed.transform.rotation.z)) 
         print("Published Transform = { x = " + str(self.frameTransform.x) +
-                                             " y = " + str(self.frameTransform.y) +
-                                             " h = " + str(self.frameTransform.z)) 
+                                            " y = " + str(self.frameTransform.y) +
+                                            " h = " + str(self.frameTransform.z)) 
 
 
 # Trigger functionality. Run this script until the keyboardInterrupt is triggered.
