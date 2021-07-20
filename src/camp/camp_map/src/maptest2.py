@@ -63,6 +63,7 @@ class Camp_Map:
     # This method will grab information from the robot's odometry.
     def updateOdom(self, data):
         self.odom = data
+        self.odom.pose.pose.position.x = self.odom.pose.pose.position.x + 5
 
 
     #--------------------------------------------------------------------------------------------------------------
