@@ -163,7 +163,6 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
     ROS_INFO("Theta: %f",theta);
 	transform_publisher.publish(tr);
     //tf2 stuff
-    static tf2_ros::TransformBroadcaster br;
     geometry_msgs::TransformStamped transformStamped;
 
     transformStamped.header.stamp = ros::Time::now();
@@ -180,10 +179,6 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
     transformStamped.transform.rotation.w = q.w();
 
     ROS_INFO("I am reaching the broadcast point!");
-
-    
-    transformStamped.header.stamp = ros::Time::now();
-    br.sendTransform(transformStamped);
 
     return transformStamped;
 }
@@ -211,6 +206,9 @@ int main(int argc, char **argv) {
     ros::Subscriber odom_subscriber = nh.subscribe("odom", 10, odomCallback);
     ros::Subscriber tag_subscriber = nh.subscribe("filtered", 10, tagCallback);
 	ros::Publisher transform_publisher = nh.advertise<geometry_msgs::Vector3>("transform", 10);
+        
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped theTransform;
     
     while(ros::ok()) {
 
@@ -229,9 +227,12 @@ int main(int argc, char **argv) {
             // Do this if there are enough points to do a conversion
             if(odom_x.size() >= min_point_count){
                 ROS_INFO("Publishing (new)...");
-                getOffsets(transform_publisher,transformStamped);
+                theTransform = getOffsets(transform_publisher,transformStamped);
             }
         }
+
+        transformStamped.header.stamp = ros::Time::now();
+        br.sendTransform(theTransform);
 		loop_rate.sleep();
 		ros::spinOnce();
 	}
