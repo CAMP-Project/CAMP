@@ -6,7 +6,7 @@ import rospy
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Pose, PoseStamped #Vector3, Point, PointStamped
+from geometry_msgs.msg import Pose, PoseStamped, PointStamped, TransformStamped #Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 import tf
@@ -31,6 +31,7 @@ class Camp_Map:
 
         # This will publish the computed map information.
         self.map_publisher = rospy.Publisher('map', OccupancyGrid, queue_size = 10)
+        self.bot_publisher = rospy.Publisher('robot_publisher',PointStamped, queue_size = 10)
 
         # Initialize important data types. For this script, we need access to the OccupancyGrid produced
         # by SLAM. We need the Lidar for obstacle detection. We need the odometry for positional data. 
@@ -69,17 +70,43 @@ class Camp_Map:
 
     # This method will grab information from the robot's odometry.
     def updateOdom(self, data):
+
+        def transformActions(poseToBeTransformed, target_frame, source_frame, action):
+            poseToPoseTransform = TransformStamped()
+
+            # Try performing the transform. First, determine if the pose can be transformed. Second, if the transform
+            # can occur, look up the transform in the tf2 buffer. Third, once a transform has been found, use tf2
+            # to calculate the resulting pose of the pose to-be-transformed subject to the looked-up transform.
+            try:
+                self.tf_buffer.can_transform(target_frame, source_frame, rospy.Time(0), rospy.Duration(3.0))
+                poseToPoseTransform = self.tf_buffer.lookup_transform(target_frame, source_frame, rospy.Time(0))
+                poseInNewFrame = tfgm.do_transform_pose(poseToBeTransformed, poseToPoseTransform)
+
+            # If the transform cannot occur (an exception has been raised), catch it, and sleep.
+            except (tfr.LookupException, tfr.ConnectivityException, tfr.ExtrapolationException):
+                rospy.sleep(1)
+                poseInNewFrame = poseToBeTransformed
+
+            # Here, the user can select which object they would like returned. This prevents the need
+            # to create two methods which are so similar in code. The 'action' parameter decides which
+            # object is to be returned. If nothing has been entered, it will, by default, return
+            # the new pose of the pose-to-be-transformed.
+            if action is 'pose':
+                return poseInNewFrame
+            elif action is 'transform':
+                return poseToPoseTransform
+            else:
+                return poseInNewFrame
+
+        # --- BACK TO MAIN ---
         self.odom = data
         # build a poseStamped for transforming
         odom_pose = PoseStamped()
         odom_pose.pose =  self.odom.pose.pose
         odom_pose.header = self.odom.header
 
-        try:
-            transform = self.tf_buffer.lookup_transform('deca','odom',rospy.Time(0),rospy.Duration(1.0))
-        except Exception as x:
-            rospy.logwarn("transform goofed:\n%s",str(x))
-        self.deca_pose = tfgm.do_transform_pose(odom_pose, transform)
+        self.deca_pose = transformActions(odom_pose, "deca", "odom", "pose")
+
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -210,6 +237,12 @@ class Camp_Map:
         self.map.header.seq = self.map.header.seq + 1
         self.map.header.stamp = rospy.Time.now()
         self.map_publisher.publish(self.map)
+
+        botpos = PointStamped()
+        botpos.point = self.deca_pose.pose.position
+        botpos.header = self.deca_pose.header
+        self.bot_publisher.publish(botpos)
+
 
 
 # Trigger functionality. Run this script until the keyboardInterrupt is triggered.
