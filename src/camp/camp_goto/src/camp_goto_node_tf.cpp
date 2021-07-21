@@ -116,12 +116,14 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
     odom_rot = yaw;
-	}
+}
+
 void tagCallback(const geometry_msgs::Twist::ConstPtr& msg) {
     //ROS_INFO("grabbing tag");
     deca_x = msg->linear.x;
     deca_y = msg->linear.y;
 }
+
 void offsetCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
     tx = msg->x;
     ty = msg->y;
@@ -207,7 +209,6 @@ void pointToPoint() {
     // change any angles so that they are between -PI and PI
     float head_error = desired_heading - heading;
     while ((head_error > PI) || (head_error < 0-PI)) {
-    while ((head_error > PI) || (head_error < 0-PI)) {
         if(head_error > PI) head_error = head_error - 2*PI;
         if(head_error < 0-PI) head_error = head_error + 2*PI;
     }
@@ -243,8 +244,7 @@ void pointToPoint() {
     ROS_INFO("Debug info:\n---Transform---\nX Offset: %2.3f\nY Offset: %2.3f\nTheta:    %1.4f (%3.1f)\n---Positions---\nOdometry Yaw: %1.4f\nOdometry Coords: (%2.3f,%2.3f)\nOdometry Goal:   (%2.3f,%2.3f)\nReal TOF Coords: (%2.3f,%2.3f)\nEstimated TOF:   (%2.3f,%2.3f)\nTOF Goal:        (%2.3f,%2.3f)\n---Commands---\nSpeed: %1.2f\nForward Velocity: %f\nAngular Velocity: %f\n",tx,ty,theta,theta/PI*180,odom_rot,odom_x,odom_y,go_x,go_y,deca_x,deca_y,odom2decaX(odom_x,odom_y),odom2decaY(odom_x,odom_y),decagoal_x,decagoal_y,x_vel,z_ang_vel);
 }
 
-void shutdown_robot(int sig)
-{
+void shutdown_robot(int sig) {
     vel_msg.linear.x = 0;
     vel_msg.linear.y = 0;
     vel_msg.linear.z = 0;
@@ -315,15 +315,15 @@ int main(int argc, char **argv){
         }
         
         if (cmd.is_deca == true){
-            odomIn.point.x = odom_x;
-            odomIn.point.y = odom_y;
-            odomIn.point.z = 0;
+            odomIn.pose.position.x = odom_x;
+            odomIn.pose.position.y = odom_y;
+            odomIn.pose.position.z = 0;
             odomIn.header.frame_id = "odom";
             odomIn.header.stamp = ros::Time::now();
             try {
                 //while(tfBuffer.canTransform("deca","odom", ros::Time()));
                 decaOut = tfBuffer.transform<geometry_msgs::PoseStamped>(odomIn,"deca", ros::Duration(1));
-                ROS_INFO("\ntf'd TOF estimate:(%3.3f,%3.3f)",decaOut.point.x,decaOut.point.y);
+                ROS_INFO("\ntf'd TOF estimate:(%3.3f,%3.3f)",decaOut.pose.position.x,decaOut.pose.position.y);
             } catch (tf2::TransformException &ex) {
                 ROS_WARN("%s",ex.what());
             }
