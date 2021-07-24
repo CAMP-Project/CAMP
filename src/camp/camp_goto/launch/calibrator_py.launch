@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+  <node pkg="camp_goto" type="camp_goto_calibrator_python.py" name="calibrator" output="screen"/>
+  
+  
+</launch>
