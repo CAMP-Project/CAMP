@@ -84,6 +84,16 @@ int main(int argc, char **argv)
     // Concatonate the string "brian" with the character array "hostname".
     std::string node_name = std::string("brian_") + hostname;
 
+    // For every character in the new node name, verify that it does not contain any illegal characters
+    // native to ROS. If such illegal characters exist, replace them with an underscore.
+    string illegalChars = "\\/:?\"<>|~`';-+=!@#$%^&*()*";
+    for (int i = 0; i < node_name.length(); i++) {
+        bool foundIllegalChar = illegalChars.find(node_name[i]) != string::npos;
+        if (foundIllegalChar) {
+            node_name[i] = '_';
+        }
+    }
+
     // Check if the name has been created successfully.
     ROS_INFO("Hostname: %s", node_name.c_str());
 
