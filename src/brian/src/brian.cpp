@@ -75,7 +75,20 @@ void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr & msg)
 int main(int argc, char **argv)
 {
 
-    ros::init(argc, argv, "brian");
+    // To avoid cancelling arbitrators between cores, grab the hostname of the system and 
+    // attach it to the "brian" keyword. 
+    char hostname[_SC_HOST_NAME_MAX];
+    int result;
+    result = gethostname(hostname, HOST_NAME_MAX);
+
+    // Concatonate the string "brian" with the character array "hostname".
+    std::string node_name = std::string("brian_") + hostname;
+
+    // Check if the name has been created successfully.
+    ROS_INFO("Hostname: %s", node_name.c_str());
+
+    // Create a new node with the concatonated node name.
+    ros::init(argc, argv, node_name);
 
     // geometry_msgs::Twist vel_msg;
     
