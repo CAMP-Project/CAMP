@@ -3,7 +3,7 @@
 <launch>
 
 
-  <node pkg="camp_goto" type="camp_goto_calibrator_python.py" name="calibrator" output="screen"/>
+  <node pkg="camp_goto" type="camp_goto_calibrator_python.py" name="calibrator_py" output="screen"/>
   
   
 </launch>

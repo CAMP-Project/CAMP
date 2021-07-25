@@ -94,7 +94,11 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
         dy = deca_y.begin();
         for(ox = odom_x.begin(); ox != odom_x.end(); ++ox){
             tx = tx + (1/n)*(*dx-a**ox+b**oy);
+            ROS_INFO("tx: %f", tx);
+            
             ty = ty + (1/n)*(*dy-a**oy-b**ox);
+            ROS_INFO("ty: %f", ty);
+
             tx2 = tx2 + (1/n)*(*dx-a2**ox+b2**oy);
             ty2 = ty2 + (1/n)*(*dy-a2**oy-b2**ox);
             ++oy;
@@ -113,6 +117,14 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
             ++dx;
             ++dy;
         }
+
+
+        /* 
+        Here, f_prime is used to calculate theta, but afterwards, you check if f_prime is zero.
+        shouldn't you check if f_prime is zero BEFORE using it to calculate theta?
+        */
+
+
         f_prime = (f2 - f)/d_theta;
         last_theta = theta;
         theta = theta - f/f_prime;

@@ -40,7 +40,7 @@ class Calibrator_Python:
         rospy.Subscriber('/filtered', Twist, self.decaCallback)
 
         # Setup publisher for sending transform data.
-        self.transform_publisher = rospy.Publisher('/transform', Vector3, queue_size=10)
+        self.transform_publisher = rospy.Publisher('/transform_py', Vector3, queue_size=10)
 
         # Setup a tf buffer and broadcaster.
         self.tfBuffer = tf2_ros.Buffer()
@@ -53,14 +53,14 @@ class Calibrator_Python:
         self.deca_x = 0
         self.deca_y = 0
 
-        self.odom_x_list = [0]
-        self.odom_y_list = [0]
-        self.deca_x_list = [0]
-        self.deca_y_list = [0]
+        self.odom_x_list = []
+        self.odom_y_list = []
+        self.deca_x_list = []
+        self.deca_y_list = []
 
         # Parameter information for the Least Squares Best Fit algorithm.
         self.min_points = 3                  # The minimum number of points to allow in the lists.
-        self.max_points = 99                 # The maximum number of points to allow in the lists.
+        self.max_points = 20                 # The maximum number of points to allow in the lists.
         self.max_points_modifier = 0         # Amount of points in the front of the point lists to remove.
         self.max_points_modification = 15    #
         self.new_point_distance = 0.1
@@ -107,7 +107,9 @@ class Calibrator_Python:
         self.odom_y_list.append(self.odom_y)
         self.deca_x_list.append(self.deca_x)
         self.deca_y_list.append(self.deca_y)
+        print("HERE IS HOW BIG THE LIST IS: " + str(len(self.odom_x_list)))
         while len(self.odom_x_list) > (self.max_points - self.max_points_modifier):
+            print("AM I EVER REMOVING POINTS???")
             self.odom_x_list.pop()
             self.odom_y_list.pop()
             self.deca_x_list.pop()
@@ -149,39 +151,37 @@ class Calibrator_Python:
 
                 # First summation to compute the translational transformation offsets.
                 for i in range(0, n):
-                    tx = tx + (self.deca_x_list[i] - (a * self.odom_x_list[i]) + (b * self.odom_y_list[i]))
-                    ty = ty + (self.deca_y_list[i] - (a * self.odom_y_list[i] - (b * self.odom_x_list[i])))
-                    tx2 = tx2 + (self.deca_x_list[i] - (a2 * self.odom_x_list[i]) + (b2 * self.odom_y_list[i]))
-                    ty2 = ty2 + (self.deca_y_list[i] - (a2 * self.odom_y_list[i]) - (b2 * self.odom_x_list[i]))
+                    tx = tx + (self.deca_x_list[i] - (a * self.odom_x_list[i]) + (b * self.odom_y_list[i])) / n
+                    print(tx)
+                    ty = ty + (self.deca_y_list[i] - (a * self.odom_y_list[i] - (b * self.odom_x_list[i]))) / n
+                    print(ty)
+                    tx2 = tx2 + (self.deca_x_list[i] - (a2 * self.odom_x_list[i]) + (b2 * self.odom_y_list[i])) / n
+                    ty2 = ty2 + (self.deca_y_list[i] - (a2 * self.odom_y_list[i]) - (b2 * self.odom_x_list[i])) / n
                 
-                # Normalize the translational offsets.
-                tx = tx / n
-                ty = ty / n
-                tx2 = tx2 / n
-                ty2 = ty2 / n
 
                 f = 0
                 f2 = 0
 
                 # Second summation to compute the orientational transformation offset.
                 for i in range(0, n):
-                    coeff1 = (ty - self.deca_y_list[i]) * (a * self.odom_x_list[i] - b * self.odom_y_list[i])
-                    coeff2 = (tx - self.deca_x_list[i]) * (a * self.odom_y_list[i] + b * self.odom_x_list[i])
+                    coeff1 = (ty - self.deca_y_list[i]) * ((a * self.odom_x_list[i]) - (b * self.odom_y_list[i]))
+                    coeff2 = (tx - self.deca_x_list[i]) * ((a * self.odom_y_list[i]) + (b * self.odom_x_list[i]))
                     f = f + coeff1 - coeff2
 
-                    coeff1a = (ty2 - self.deca_y_list[i]) * (a2 * self.odom_x_list[i] - b2 * self.odom_y_list[i])
-                    coeff2a = (tx2 - self.deca_x_list[i]) * (a2 * self.odom_y_list[i] + b2 * self.odom_x_list[i])
+                    coeff1a = (ty2 - self.deca_y_list[i]) * ((a2 * self.odom_x_list[i]) - (b2 * self.odom_y_list[i]))
+                    coeff2a = (tx2 - self.deca_x_list[i]) * ((a2 * self.odom_y_list[i]) + (b2 * self.odom_x_list[i]))
                     f2 = f2 + coeff1a - coeff2a
 
                 #TODO:
                 # 1) Comment the purposes of these constants.
 
                 f_prime = (f2 - f) / self.d_theta
-                last_theta = theta
-                theta = theta - (f / f_prime)
 
                 if f_prime is 0:
                     f_prime = 0.00000001
+
+                last_theta = theta
+                theta = theta - (f / f_prime)
 
                 if theta > math.pi or theta < -math.pi:
                     theta = theta - (math.floor(theta / math.pi) * math.pi)
@@ -204,9 +204,9 @@ class Calibrator_Python:
                     e = e / n
                     
                     # Some debug information.
-                    rospy.loginfo("-- Attempt:" + str(attempt))
-                    rospy.loginfo("Error     :" + str(e))
-                    rospy.loginfo("Theta     :" + str(theta))
+                    rospy.loginfo("-- Attempt --:" + str(attempt))
+                    rospy.loginfo("Error:" + str(e))
+                    rospy.loginfo("Theta:" + str(theta))
 
                     if e > self.bad_theta_threshold:
                         if theta is not 0:
@@ -221,6 +221,9 @@ class Calibrator_Python:
 
 
             self.theta_0 = theta
+
+            rospy.loginfo("pos offsets: (" + str(tx) + "/" + str(ty) + ")")
+            rospy.loginfo("Theta: " + str(theta))
 
             # Prepare a transform stamped for tf and a vector3 for publishing.
             transformToBroadcast = TransformStamped()
@@ -254,7 +257,7 @@ class Calibrator_Python:
         if len(self.odom_x_list) is 0:
             rospy.loginfo("First Push!")
             self.shiftCoords()
-            rospy.loginfo("Size: " + len(self.odom_x_list))
+            rospy.loginfo("Size: " + str(len(self.odom_x_list)))
 
         # Perform this action if it is time to aquire another point.
         # First, aquire the difference between the last point stored and the most recent point to come in.
@@ -266,7 +269,7 @@ class Calibrator_Python:
             rospy.loginfo("Size: " + str(len(self.odom_x_list)))
 
             # If there are sufficiently many points in the list to perform a calculation.
-            if len(self.odom_x_list) > self.min_points:
+            if len(self.odom_x_list) >= self.min_points:
                 rospy.loginfo("Calculating new offsets...")
                 self.transform = getOffsets(self.transform)
 
