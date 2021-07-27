@@ -117,6 +117,7 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
             ++dx;
             ++dy;
         }
+        ROS_INFO("f: %f", f);
 
 
         /* 
@@ -126,6 +127,9 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
 
 
         f_prime = (f2 - f)/d_theta;
+        ROS_INFO("f_prime: %f", f_prime);
+
+
         last_theta = theta;
         theta = theta - f/f_prime;
         if (f_prime == 0) f_prime = 0.00000001;

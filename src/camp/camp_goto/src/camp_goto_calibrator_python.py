@@ -48,10 +48,10 @@ class Calibrator_Python:
 
 
         # Setup constants for odometry data and decawave data.
-        self.odom_x = 0
-        self.odom_y = 0
-        self.deca_x = 0
-        self.deca_y = 0
+        self.odom_x = 9999
+        self.odom_y = 9999
+        self.deca_x = 9999
+        self.deca_y = 9999
 
         self.odom_x_list = []
         self.odom_y_list = []
@@ -107,13 +107,15 @@ class Calibrator_Python:
         self.odom_y_list.append(self.odom_y)
         self.deca_x_list.append(self.deca_x)
         self.deca_y_list.append(self.deca_y)
+        print("Odom X: " + str(self.odom_x_list))
+        print("Deca X: " + str(self.deca_x_list))
         print("HERE IS HOW BIG THE LIST IS: " + str(len(self.odom_x_list)))
         while len(self.odom_x_list) > (self.max_points - self.max_points_modifier):
             print("AM I EVER REMOVING POINTS???")
-            self.odom_x_list.pop()
-            self.odom_y_list.pop()
-            self.deca_x_list.pop()
-            self.deca_y_list.pop()
+            self.odom_x_list.pop(0)
+            self.odom_y_list.pop(0)
+            self.deca_x_list.pop(0)
+            self.deca_y_list.pop(0)
 
         self.max_points_modifier = 0
 
@@ -154,9 +156,9 @@ class Calibrator_Python:
                 # First summation to compute the translational transformation offsets.
                 for i in range(0, n):
                     tx = tx + ((self.deca_x_list[i] - (a * self.odom_x_list[i]) + (b * self.odom_y_list[i])) / n)
-                    print(tx)
-                    ty = ty + ((self.deca_y_list[i] - (a * self.odom_y_list[i] - (b * self.odom_x_list[i]))) / n)
-                    print(ty)
+                    print("tx: " + str(tx))
+                    ty = ty + ((self.deca_y_list[i] - (a * self.odom_y_list[i]) - (b * self.odom_x_list[i])) / n)
+                    print("ty: " + str(ty))
                     tx2 = tx2 + ((self.deca_x_list[i] - (a2 * self.odom_x_list[i]) + (b2 * self.odom_y_list[i])) / n)
                     ty2 = ty2 + ((self.deca_y_list[i] - (a2 * self.odom_y_list[i]) - (b2 * self.odom_x_list[i])) / n)
                 
@@ -174,10 +176,15 @@ class Calibrator_Python:
                     coeff2a = (tx2 - self.deca_x_list[i]) * ((a2 * self.odom_y_list[i]) + (b2 * self.odom_x_list[i]))
                     f2 = f2 + coeff1a - coeff2a
 
+                print("f: " + str(f))
+                print("f2: " + str(f2))
+
                 #TODO:
                 # 1) Comment the purposes of these constants.
 
                 f_prime = (f2 - f) / self.d_theta
+
+                print("f_prime: " + str(f_prime))
 
                 if f_prime is 0:
                     f_prime = 0.00000001
@@ -220,7 +227,6 @@ class Calibrator_Python:
                         attempt = attempt + 1
                         if attempt > 3:
                             self.max_points_modifier = self.max_points_modification
-                            run = 0
                             return lastTransform
 
 
@@ -258,6 +264,11 @@ class Calibrator_Python:
 
 
         # Perform this action if there are no points yet.
+        
+        while self.deca_x == 9999 or self.odom_x == 9999:
+            print("Wait for a bit")
+            rospy.sleep(1)
+
         if len(self.odom_x_list) is 0:
             rospy.loginfo("First Push!")
             self.shiftCoords()
