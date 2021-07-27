@@ -115,6 +115,8 @@ class Calibrator_Python:
             self.deca_x_list.pop()
             self.deca_y_list.pop()
 
+        self.max_points_modifier = 0
+
 
     # Functionality.
     def main(self):
@@ -151,12 +153,12 @@ class Calibrator_Python:
 
                 # First summation to compute the translational transformation offsets.
                 for i in range(0, n):
-                    tx = tx + (self.deca_x_list[i] - (a * self.odom_x_list[i]) + (b * self.odom_y_list[i])) / n
+                    tx = tx + ((self.deca_x_list[i] - (a * self.odom_x_list[i]) + (b * self.odom_y_list[i])) / n)
                     print(tx)
-                    ty = ty + (self.deca_y_list[i] - (a * self.odom_y_list[i] - (b * self.odom_x_list[i]))) / n
+                    ty = ty + ((self.deca_y_list[i] - (a * self.odom_y_list[i] - (b * self.odom_x_list[i]))) / n)
                     print(ty)
-                    tx2 = tx2 + (self.deca_x_list[i] - (a2 * self.odom_x_list[i]) + (b2 * self.odom_y_list[i])) / n
-                    ty2 = ty2 + (self.deca_y_list[i] - (a2 * self.odom_y_list[i]) - (b2 * self.odom_x_list[i])) / n
+                    tx2 = tx2 + ((self.deca_x_list[i] - (a2 * self.odom_x_list[i]) + (b2 * self.odom_y_list[i])) / n)
+                    ty2 = ty2 + ((self.deca_y_list[i] - (a2 * self.odom_y_list[i]) - (b2 * self.odom_x_list[i])) / n)
                 
 
                 f = 0
@@ -190,6 +192,7 @@ class Calibrator_Python:
                     theta = 0.00000001
 
                 if abs((theta - last_theta)/theta) > self.theta_found_threshold:
+                    print("My theta is not good enough!")
                     run = 1
                 else:
 
@@ -217,6 +220,7 @@ class Calibrator_Python:
                         attempt = attempt + 1
                         if attempt > 3:
                             self.max_points_modifier = self.max_points_modification
+                            run = 0
                             return lastTransform
 
 
@@ -282,7 +286,5 @@ class Calibrator_Python:
 if __name__== '__main__':
     calibrator = Calibrator_Python()
     while not rospy.is_shutdown():
-        calibrator.main()
-
-        # Run at 10 Hz
         rospy.sleep(0.1)
+        calibrator.main()

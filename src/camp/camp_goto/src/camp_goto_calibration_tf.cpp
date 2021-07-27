@@ -131,9 +131,10 @@ geometry_msgs::TransformStamped getOffsets(ros::Publisher transform_publisher, g
         if (f_prime == 0) f_prime = 0.00000001;
         if (theta > PI || theta < -PI) theta = theta - floor(theta/(PI))*PI;
         if (theta == 0) theta = 0.00000001;
-        if (abs((theta - last_theta)/theta) > theta_found_threshold) 
+        if (abs((theta - last_theta)/theta) > theta_found_threshold) {
+            ROS_INFO("I am trying again!");
             run = 1; 
-        else {
+        } else {
             e = 0;
             oy = odom_y.begin();
             dx = deca_x.begin();
