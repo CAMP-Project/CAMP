@@ -42,9 +42,9 @@ void MMArbitrator::sync(ros::NodeHandle n)
         // If the number of hosts is the same between runs, no need to run everything again
         if (this->_available.size() == s-1)
         {
-            debug_print("Sync");
+            //debug_print("Sync");
             // Advertise the current robot's map and odometry under a different name
-            ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), s);
+            //ROS_INFO("%d ~ %d", _map_pub.getTopic().empty(), s);
             if (this->_current_name.size() > 0 && _map_pub.getTopic().empty())
             {
                 ROS_INFO("Setting up my publishers");
@@ -200,7 +200,7 @@ bool MMArbitrator::mapService(brian::RobotMapService::Request & req, brian::Robo
  */
 bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, brian::RobotPositionService::Response& res)
 {
-    debug_print("Servicing map service for : " + req.name.data);
+    debug_print("Servicing position service for : " + req.name.data);
 
     if (req.name.data == this->_current_name)
     {
@@ -212,6 +212,7 @@ bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, br
     std::map<std::string, nav_msgs::Odometry>::iterator it = this->_positions_map.find(req.name.data);
 
     // If we didn't find it, do the following
+    ROS_INFO("NUMBER OF POSITION VALUES: %f", this->_positions_map.size());
     if (it == this->_positions_map.end())
     {
         debug_print("Unable to service position call for host: " + req.name.data);
@@ -291,7 +292,7 @@ void MMArbitrator::master_state_callback(const fkie_multimaster_msgs::MasterStat
     // this->_my_state.master = ms->master;
     // this->_my_state.state = ms->state;
     this->_my_state = *ms.get();
-    ROS_INFO("Somebody called the master state callback!!!");
+    //ROS_INFO("Somebody called the master state callback!!!");
     if (this->_current_name.empty())
         this->_current_name = check_host(ms->master.name);
 }
