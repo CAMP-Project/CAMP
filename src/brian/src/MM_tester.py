@@ -51,7 +51,7 @@ class MM_tester:
         # Create variables to hold the desired structures. 
         # First: Odometry.
         self.odom = Odometry()
-        self.odom.header.frame_id = 'Virtual_Machine'
+        self.odom.header.frame_id = 'Turtlebot'
         self.odom.header.stamp = rospy.Time()
         self.odom.child_frame_id = 'ROS'
         self.odom.pose.pose.position.x = 2
