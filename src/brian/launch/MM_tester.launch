@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!--node pkg="kalman_filter" type="kalman_filter_EKF.py" name="EKF" /-->
+  <node pkg="brian" type="MM_tester.py" name="MMT" output="screen"/>
+  
+  
+</launch>

@@ -58,6 +58,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
             // Lets publish the current robot's information before grabbing other things
             else if (this->_current_name.size() > 2)
             {
+                //ROS_INFO("I am publishing the new map and odom topics!");
                 this->_map_pub.publish(this->_my_map);
                 this->_odom_pub.publish(this->_my_odom);
             }
@@ -129,6 +130,7 @@ void MMArbitrator::sync(ros::NodeHandle n)
                 // if (ch == this->_subs.end() && new_host != this->_current_name)
                 if (this->_sub_map.find(new_host+"/odom") == this->_sub_map.end() || this->_sub_map.find(new_host+"/map") == this->_sub_map.end())
                 {
+                    ROS_INFO("---Currently creating subscribers for other odometry nodes and maps...");
                     // Odom Subscriber for this host has not been setup yet. Let's set it up now.
                     ros::Subscriber new_odom = n.subscribe<nav_msgs::Odometry>(new_host+"/odom", 10, boost::bind(&MMArbitrator::mm_position_callback, this, (std::string)new_host+"/odom", _1));
                     // this->_subs.push_back(new_odom);
@@ -141,6 +143,15 @@ void MMArbitrator::sync(ros::NodeHandle n)
             }
             // If the current host is found, nothing else needs to be done and 
             // the loop can move onto the next element
+            if (!this->_sub_map.empty())
+            {
+                ROS_INFO("The sublist is not empty!");
+                ROS_INFO("There are %d subscribers in the map", this->_sub_map.size());
+            }
+            else
+            {
+                ROS_INFO("There are no subscribers in the map!");
+            }
         }
     }
     else
@@ -211,8 +222,21 @@ bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, br
     // Search for the position data
     std::map<std::string, nav_msgs::Odometry>::iterator it = this->_positions_map.find(req.name.data);
 
-    // If we didn't find it, do the following
-    ROS_INFO("NUMBER OF POSITION VALUES: %f", this->_positions_map.size());
+
+    if (!this->_positions_map.empty()) 
+    {
+        for (auto const &pair: this->_positions_map) 
+        {
+            ROS_INFO("Host: %s   Value: %s", pair.first.c_str(), pair.second.header.frame_id.c_str());
+        }
+    } 
+    else 
+    {
+        ROS_INFO("The current list of position variables is empty!");
+        ROS_INFO("Size of positions_map: %d", this->_positions_map.size());
+    }
+
+
     if (it == this->_positions_map.end())
     {
         debug_print("Unable to service position call for host: " + req.name.data);
@@ -232,7 +256,9 @@ bool MMArbitrator::positionService(brian::RobotPositionService::Request& req, br
  */
 void MMArbitrator::mm_position_callback(std::string s, const nav_msgs::Odometry::ConstPtr& odom)
 {
+    ROS_INFO("Odometry Frame-ID: %s", odom->header.frame_id.c_str());
     this->_positions_map[s] = *odom.get();
+    //this->_positions_map[s] = odom;
     debug_print("Updated: "+s);
 }
 
@@ -246,6 +272,7 @@ void MMArbitrator::_position_callback(const nav_msgs::Odometry::ConstPtr& pos)
     // TODO: Fix the issues with the Subscriber and Publisher for Odometry information
     // this->_my_odom = pos->twist;
     // this->_my_odom.angular = pos->angular;
+    this->_my_odom = *pos.get();
 }
 
 /**
