@@ -11,52 +11,32 @@ import tf2_ros as tfr
 
 import maphelper as mh
 
-class Camp_Merge:
+class Camp_Map_Export:
 
     #--------------------------------------------------------------------------------------------------------------
     # Initialization of ROS attributes and global variables.
     #--------------------------------------------------------------------------------------------------------------
     def __init__(self): 
         # Have ROS initialize this script as a node in rqt.
-        rospy.init_node('camp_merge', anonymous = False)   
+        rospy.init_node('camp_map_export', anonymous = False)   
 
-        map1_name = rospy.get_param('map1', 'map') 
+        in_name = rospy.get_param('map_in', 'map') 
 
-        map2_name = rospy.get_param('map2', 'map')
+        out_name = rospy.get_param('map_out', 'deca_map')
         
-        # Subscribe to map1.
-        rospy.Subscriber('/'+str(map1_name), OccupancyGrid, self.map_subscriber)
-
-        # Subscribe to map2 if different from map1.
-        if map2_name != map1_name:
-            rospy.Subscriber('/'+str(map2_name), OccupancyGrid, self.map_subscriber)
-
+        # Subscribe to input map
+        rospy.Subscriber('/'+str(in_name), OccupancyGrid, self.map_subscriber)
 
         # This will publish the computed map information.
-        self.map_publisher = rospy.Publisher('merged_map', OccupancyGrid, queue_size = 10)
-
-        # Define a map used to combine all the parts of the incoming maps and to publish
-        self.map = OccupancyGrid()
-        self.map.header.frame_id = rospy.get_param('frame', 'map')
-        self.map.header.seq  = 0
-        self.map.info.resolution = 0.05
-        self.map.info.width = 100
-        self.map.info.height = 100
-        self.map.info.origin.position.x = -self.map.info.width/2*self.map.info.resolution
-        self.map.info.origin.position.y = -self.map.info.height/2*self.map.info.resolution
-        self.map.info.origin.position.z = 0
-        self.map.info.origin.orientation.x = 0
-        self.map.info.origin.orientation.y = 0
-        self.map.info.origin.orientation.z = 0
-        self.map.info.origin.orientation.w = 0
-        data = []
-        data = [-1 for i in range(0,self.map.info.width * self.map.info.height)]
-        self.map.data = data
+        self.map_publisher = rospy.Publisher(out_name, OccupancyGrid, queue_size = 10)
+        
+        self.output_frame = rospy.get_param('output_frame', 'deca')
 
         self.tf_buffer = tfr.Buffer(rospy.Duration(1200.0)) #tf buffer length
         self.tf_listener = tfr.TransformListener(self.tf_buffer)
-        self.maps_read = 0
+
         self.read_map = False
+        self.map_published = False
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -66,20 +46,15 @@ class Camp_Merge:
     # This method will grab maps as they are published.
     def map_subscriber(self, data):
         print("Data received!")
-        # print(max(self.map.data))
-        # print(min(self.map.data))
-        self.maps_read = self.maps_read + 1
         self.read_map = True
         new_map =  data
         
-        tfd_map = mh.transform_map(new_map,self.map.header.frame_id,self.tf_buffer)
-        if tfd_map != -1:
-            self.map = mh.combine_map(tfd_map,self.map)
-        else:
+        tfd_map = mh.transform_map(new_map,self.output_frame,self.tf_buffer)
+        if tfd_map == -1:
             print("transform failed, map not updated.")
-
-        self.map.header.stamp = rospy.Time.now()
-        self.map_publisher.publish(self.map)
+        else:
+            self.map_publisher.publish(tfd_map)
+            self.map_published = True
         print("finished the callback")
 
 
@@ -90,8 +65,11 @@ class Camp_Merge:
         
         # main doesn't really do anythin right now.
         if self.read_map:
-            print("read "+str(self.maps_read)+" maps so far")
+            print("read a map")
             self.read_map = False
+        if self.map_published:
+            print("published a map")
+            self.map_published = False
         
 
             
@@ -99,7 +77,7 @@ class Camp_Merge:
 
 # Trigger functionality. Run this script until the keyboardInterrupt is triggered.
 if __name__ == '__main__':
-    path = Camp_Merge()
+    path = Camp_Map_Export()
     while not rospy.is_shutdown():
         path.main()
 
