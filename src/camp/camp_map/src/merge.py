@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 import math
+from typing_extensions import OrderedDict
 import roslib
 #import numpy as np;
 import rospy
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Pose, PoseStamped, PointStamped #Vector3, Point, PointStamped
+from geometry_msgs.msg import Pose, PoseStamped, Point, PointStamped #Vector3, Point, PointStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 import tf
@@ -87,6 +88,8 @@ class Camp_Merge:
             if new_map.header.frame_id == self.map.header.frame_id:
                 print("same frame")
                 return new_map
+                
+            print("different frame")
 
             # if the new map is in a different frame, try to find a transform.
             try:
@@ -126,30 +129,65 @@ class Camp_Merge:
                 out_map.info.origin.position.x = min(corner_list_x)
                 out_map.info.origin.position.y = min(corner_list_y)
                 out_map.info.resolution = new_map.info.resolution
-                out.map.info.width = int(round((max(corner_list_x) - min(corner_list_x))/out_map.info.resolution))
-                out.map.info.height = int(round((max(corner_list_y) - min(corner_list_y))/out_map.info.resolution))
+                out_map.info.width = int(round((max(corner_list_x) - min(corner_list_x))/out_map.info.resolution))
+                out_map.info.height = int(round((max(corner_list_y) - min(corner_list_y))/out_map.info.resolution))
                 out_map.header.stamp = new_map.header.stamp
                 out_map.header.frame_id = target_frame
 
                 # now take every bit of data from the old map and add it to the new map
+                # first, make a PointStamped so we don't make one every loop.
+                new_point = PointStamped()
+                new_point.header.frame_id = new_map.header.frame_id
+                new_point.header.stamp = new_map.header.stamp
+                # initialize the output to all -1
                 out_map.data = [-1 for i in range(0,out_map.info.width * out_map.info.height)]
-                for m in range(new_map.info.width):
-                    for n in range(new_map.info.height):
-                        # TODO: this is going to suck...
-                        # transform the grid square from the original to meters
-                        # then tansform it to the new frame
-                        # finally switch it back to grids int he new frame
-                        # then write the data in the new map.
-                        # maybe make a square2meter([x,y]map.info) function?
+                # for each input data point
+                for i in range(0,new_map.info.width * new_map.info.height):
+                    # if the index has useful information
+                    if new_map.info[i] != -1:
+                        # find the index's location in meters (point form)
+                        new_point.point = index2point(i,new_map.info)
+                        # transform the point to the new frame
+                        out_point = tfgm.do_transform_point(new_point, map_transform)
+                        # find the index for the point on the output map
+                        out_index = point2index(out_point.point,out_map.info)
+                        # save the data in the output map
+                        if out_map.data[out_index] == -1:
+                            # Normal case where this is the first data written to a square
+                            out_map.data[out_index] = new_map.info[i]
+                        else:
+                            # possible case where two data points are assigned to the same square
+                            print("double writing is a case that needs consideration")
+                            out_map.data[out_index] = (new_map.info[i] + out_map.data[out_index])/2
+                
+                return out_map
+
 
             # If the transform cannot occur (an exception has been raised), catch it, and sleep.
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            except (tfr.LookupException, tfr.ConnectivityException, tfr.ExtrapolationException):
                 print("Transform Problem!!")
+                print("consider this an error thrown")
+                print("or maybe the error should pass through and be caught when this function is called.")
                 rospy.sleep(1)
+                return -1
+        
+        def index2point(index = 0,info = OccupancyGrid().info):
+            #info = OccupancyGrid().info
+            x = index % info.width
+            y = index // info.width
+            point = Point()
+            point.x = x*info.resolution + info.origin.position.x
+            point.y = y*info.resolution + info.origin.position.y
+            point.z = 0
+            return point
 
-
-
-            print("Frames don't match!")
+        def point2index(point = Point(),info = OccupancyGrid().info):
+            x = point.x
+            y = point.y
+            x = int(round((x - info.origin.position.x)/info.resolution))
+            y = int(round((y - info.origin.position.y)/info.resolution))
+            index = x + y * info.width
+            return index
 
         # This function combines the new map's data with the existing map.
         def combine_map(new_map):
@@ -235,11 +273,13 @@ class Camp_Merge:
             self.map.header.stamp = rospy.Time.now()
             self.map_publisher.publish(self.map)
         
-        # tfd_map = transform_map(new_map)
-        # out_map = combine_map(tfd_map)
-        out_map = combine_map(new_map)
+        tfd_map = transform_map(new_map)
+        if tfd_map != -1:
+            out_map = combine_map(tfd_map)
 
-        self.map = out_map
+            self.map = out_map
+        else:
+            print("transform failed, map not updated.")
         publish_map()
         print("finished the callback")
 
