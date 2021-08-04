@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="map_in" />
+  <arg name="map_out" />
+  <arg name="output_frame" />
+
+  <param name="map_in" value="$(arg map_in)"/>
+  <param name="map_out" value="$(arg map_out)"/>
+  <param name="output_frame" value="$(arg output_frame)"/>
+  
+  <node pkg="camp_map" type="export.py" name="export_$(arg map_in)_to_$(arg output_frame)" output="screen" />
+  
+</launch>

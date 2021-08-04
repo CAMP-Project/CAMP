@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+  <include file="$(find camp_map)/launch/merge.launch" >
+    <arg name="map1" value="map_1"/>
+    <arg name="map2" value="map_2"/>
+    <arg name="frame" value="map"/>
+  </include> 
+
+  <node pkg="camp_map" type="maptest1.py" name="map_1" output="screen" />
+  <node pkg="camp_map" type="maptest2.py" name="map_2" output="screen" />
+  
+</launch>

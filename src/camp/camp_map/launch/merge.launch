@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="map1" />
+  <arg name="map2" />
+  <arg name="frame" />
+
+  <param name="map1" value="$(arg map1)"/>
+  <param name="map2" value="$(arg map2)"/>
+  <param name="frame" value="$(arg frame)"/>
+  
+  <node pkg="camp_map" type="merge.py" name="merge_$(arg map1)_$(arg map2)" output="screen" />
+  
+</launch>
