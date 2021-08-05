@@ -134,8 +134,8 @@ void offsetCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
     theta = msg->z;
     // update goal if navigating via decawave.
     if(cmd.is_deca == true){
-        go_x = deca2OdomX(decagoal_x,decagoal_y);
-        go_y = deca2OdomY(decagoal_x,decagoal_y);
+        // go_x = deca2OdomX(decagoal_x,decagoal_y);
+        // go_y = deca2OdomY(decagoal_x,decagoal_y);
     }
     
 }
@@ -167,8 +167,8 @@ void updateLongPos(const camp_goto::Cmd::ConstPtr& msg){
             decagoal_x += deca_x;
             decagoal_y += deca_y;
         }
-        go_x = deca2OdomX(decagoal_x,decagoal_y);
-        go_y = deca2OdomY(decagoal_x,decagoal_y);
+        // go_x = deca2OdomX(decagoal_x,decagoal_y);
+        // go_y = deca2OdomY(decagoal_x,decagoal_y);
     }
 
     if (msg->speed >= 0.0 && msg->speed <= 1.0){
