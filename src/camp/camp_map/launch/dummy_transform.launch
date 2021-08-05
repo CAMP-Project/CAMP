@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node pkg="camp_map" type="dummy_transform.py" name="fake_transform" output="screen" />
+  
+</launch>
