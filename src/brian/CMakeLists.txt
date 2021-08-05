@@ -61,7 +61,6 @@ add_service_files(
   FILES
   RobotMapService.srv
   RobotPositionService.srv
-  RobotListService.srv
 )
 
 ## Generate actions in the 'action' folder

@@ -355,7 +355,7 @@ void MMArbitrator_NS::print_current_hosts()
  */
 void MMArbitrator_NS::update_host_list()
 {
-    debug_print("Updating the list of hosts...");
+    // debug_print("Updating the list of hosts...");
 
     // First, clear the host list.
     this->_host_list.robotKeys.clear();
@@ -364,6 +364,7 @@ void MMArbitrator_NS::update_host_list()
     // host list array.
     for (int i = 0; i < this->_available.size(); i++) 
     {
+        debug_print("I am inside the 'for' loop!");
         // First, grab the current element of the available hosts.
         std::string element = this->_available.at(i);
 
@@ -373,4 +374,6 @@ void MMArbitrator_NS::update_host_list()
         // Debug statement to confirm the correct values are being entered into the host list.
         debug_print("---Value at index " + std::to_string(i) + ": " + element.c_str());
     }
+
+    debug_print("The host list has " + std::to_string(this->_host_list.robotKeys.size()) + " elements!");
 } 
