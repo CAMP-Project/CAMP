@@ -1,3 +1,4 @@
+/*
 #include <iostream>
 #include <stdio.h>
 #include <ros/ros.h>
@@ -25,11 +26,11 @@ MapParser mapParser;
 
 bool data_avail = false;
 
-/**
+
  * @brief Callback function for the Lidar data
  * 
  * @param msg sensor_msgs::LaserScan pointer
- */
+/
 void msgCallback(const sensor_msgs::LaserScan::ConstPtr & msg)
 {
     angle_min = msg->angle_min;
@@ -42,11 +43,11 @@ void msgCallback(const sensor_msgs::LaserScan::ConstPtr & msg)
     intensities = msg->intensities;
 }
 
-/**
+
  * @brief Callback function for reading the Map from the SLAM algorithm
  * 
  * @param msg nav_msgs::OccupancyGrid pointer
- */
+
 void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr & msg)
 {
         mapParser.height = msg->info.height;
@@ -118,3 +119,4 @@ int main(int argc, char **argv)
 
     return 0;
 }
+*/

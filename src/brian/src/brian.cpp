@@ -14,7 +14,7 @@
 #include <unistd.h>
 
 #include "MapParser.h"
-#include "MMArbitrator.h"
+#include "MMArbitrator_NS.h"
 
 using namespace std;
 
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 
     // Launch the Data Arbitrator
     ROS_INFO("Looking for other Cores");
-    MMArbitrator mma(n);
+    MMArbitrator_NS mma(n);
 
     // Map Parser Code to output the current map into an image file on the current system's disk
     // ros::Subscriber lidar = n.subscribe("scan", 100, msgCallback);
