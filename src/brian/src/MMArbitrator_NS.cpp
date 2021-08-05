@@ -64,6 +64,8 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
 
                 // Update the host list and publish.
                 update_host_list();
+                this->_host_list.info.stamp = ros::Time::now();
+                this->_host_list.info.frame_id = "host_list";
                 this->_list_pub.publish(this->_host_list);
             }
             return;
