@@ -43,11 +43,16 @@ def transform_map(in_map,out_frame,tf_buffer):
         pointin.header.frame_id = in_map.header
 
         # Take every corner of the map and find the maximum and minimum x and y values in the new frame
+        # in_list_x = []
+        # in_list_y = []
+        # indexlist = []
         corner_list_x = []
         corner_list_y = []
         for i in range(4):
             # set the point to the origin of the new map
-            pointin.point = in_map.info.origin.position
+            pointin.point.x = in_map.info.origin.position.x
+            pointin.point.y = in_map.info.origin.position.y
+            pointin.point.z = 0
 
             # add a width or a height sometimes to get the other corners
             if i == 1 or i == 3:
@@ -57,9 +62,24 @@ def transform_map(in_map,out_frame,tf_buffer):
             
             pointout = tfgm.do_transform_point(pointin, map_transform)
 
+            # in_list_x.append(pointin.point.x)
+            # in_list_y.append(pointin.point.y)
+            # indexlist.append(i)
             corner_list_x.append(pointout.point.x)
             corner_list_y.append(pointout.point.y)
-        
+
+        # print("-i-") 
+        # print(corner_list_x)
+        # print(corner_list_y)
+
+        # print("-in-") 
+        # print(in_list_x)
+        # print(in_list_y)
+
+        # print("-out-") 
+        # print(corner_list_x)
+        # print(corner_list_y)
+
         # find the largest and smallest points and use them to set the origin and h/w
         out_map = OccupancyGrid()
         out_map.info.origin.position.x = min(corner_list_x)
@@ -87,14 +107,30 @@ def transform_map(in_map,out_frame,tf_buffer):
                 out_point = tfgm.do_transform_point(new_point, map_transform)
                 # find the index for the point on the output map
                 out_index = point2index(out_point.point,out_map.info)
+                # out_x = out_index[1]
+                # out_y = out_index[2]
+                # out_index = out_index[0]
                 # save the data in the output map
-                if out_map.data[out_index] == -1:
-                    # Normal case where this is the first data written to a square
-                    out_map.data[out_index] = in_map.data[i]
-                else:
-                    # possible case where two data points are assigned to the same square
-                    print("double writing is a case that needs consideration")
-                    out_map.data[out_index] = (in_map.data[i] + out_map.data[out_index])/2
+                try:
+                    if out_map.data[out_index] == -1:
+                        # Normal case where this is the first data written to a square
+                        out_map.data[out_index] = in_map.data[i]
+                    else:
+                        # possible case where two data points are assigned to the same square
+                        print("double writing is a case that needs consideration")
+                        out_map.data[out_index] = (in_map.data[i] + out_map.data[out_index])/2
+                except:
+                    print("!!! ---  BROKEN  --- !!!")
+                    print("!  Index !")
+                    print(out_index)
+                    print("!  x/y !")
+                    print(out_x)
+                    print(out_y)
+                    print("!  w/h !")
+                    print(out_map.info.width)
+                    print(out_map.info.height)
+                    #rospy.sleep(1)
+                    
         
         return out_map
 
@@ -122,6 +158,7 @@ def point2index(point,info):
     x = int(round((x - info.origin.position.x)/info.resolution))
     y = int(round((y - info.origin.position.y)/info.resolution))
     index = x + y * info.width
+    # return [index,x,y]
     return index
 
 # This function combines the new map's data with the existing map.

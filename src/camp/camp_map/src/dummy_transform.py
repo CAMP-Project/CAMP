@@ -51,12 +51,12 @@ class Calibrator_Python:
         transformToBroadcast.child_frame_id = "testframe"
 
         # Transform translational info.
-        transformToBroadcast.transform.translation.x = 0
-        transformToBroadcast.transform.translation.y = 0
+        transformToBroadcast.transform.translation.x = -2
+        transformToBroadcast.transform.translation.y = 5
         transformToBroadcast.transform.translation.z = 0.0
 
         # Transform rotational info.
-        theta = 102/180*math.pi
+        theta = 0.785
         quat = transformations.quaternion_from_euler(0, 0, theta)
         transformToBroadcast.transform.rotation.x = quat[0]
         transformToBroadcast.transform.rotation.y = quat[1]
