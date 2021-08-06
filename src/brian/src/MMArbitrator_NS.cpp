@@ -53,7 +53,7 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10); 
 
                 std::string odom_labeled_name = this->_current_name;
-                odom_labeled_name.append("odom_labeled");
+                odom_labeled_name.append("/odom_labeled");
                 this->_odom_label_pub = n.advertise<brian::OdometryLabeled>(odom_labeled_name, 10);
                 this->_list_pub = n.advertise<brian::RobotKeyList>("/host_list", 10);
             }

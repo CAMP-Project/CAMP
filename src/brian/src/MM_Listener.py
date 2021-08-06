@@ -91,9 +91,6 @@ class MM_Listener:
         self.odom_map[data.name] = data.odom
 
 
-    def init_grid(self, data):
-        print("this is temp")
-
     def main(self):
         rospy.loginfo("Current hosts:")
         for key in self.host_list:
