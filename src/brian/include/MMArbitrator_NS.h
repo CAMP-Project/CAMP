@@ -9,13 +9,6 @@
  */ 
 
 // ROS Objects
-/*
-#include <ros/node_handle.h>
-#include <ros/subscriber.h>
-#include <ros/publisher.h>
-#include <ros/service_server.h>
-#include <ros/service_client.h>
-*/
 #include <ros/ros.h>
 
 // ROS Messages
@@ -38,8 +31,9 @@
 #include "brian/RobotMapService.h"
 #include "brian/RobotPositionService.h"
 
-// Custom Hostlist Message
+// Custom Messages
 #include "brian/RobotKeyList.h"
+#include "brian/OdometryLabeled.h"
 
 // Preprocessor Definitions
 #define DEBUG 1
@@ -87,6 +81,9 @@ private:
     // Publisher for the MMA-generated hostlist
     ros::Publisher _list_pub;
 
+    // Publisher for Odometry Labeled value
+    ros::Publisher _odom_label_pub;
+
     // List of other hosts on the network
     std::vector<std::string> _available;
 
@@ -105,6 +102,9 @@ private:
 
     // List of all the current hosts obtained by the arbitrator on the current network.
     brian::RobotKeyList _host_list;
+
+    // Variable to hold on to a labeled version of odometry
+    brian::OdometryLabeled _odom_labeled;
 
     // ROS Service servers
     ros::ServiceServer _map_service_server;

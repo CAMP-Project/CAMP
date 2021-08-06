@@ -50,10 +50,12 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 std::string new_map_name = this->_current_name;
                 new_map_name.append("/map");
                 this->_odom_pub = n.advertise<nav_msgs::Odometry>(new_odom_name, 10);
-                this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10);
-                std::string new_list_name = this->_current_name;
-                new_list_name.append("/host_list");
-                this->_list_pub = n.advertise<brian::RobotKeyList>(new_list_name, 10);
+                this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10); 
+
+                std::string odom_labeled_name = this->_current_name;
+                odom_labeled_name.append("odom_labeled");
+                this->_odom_label_pub = n.advertise<brian::OdometryLabeled>(odom_labeled_name, 10);
+                this->_list_pub = n.advertise<brian::RobotKeyList>("/host_list", 10);
             }
             // Lets publish the current robot's information before grabbing other things
             else if (this->_current_name.size() > 2)
@@ -61,6 +63,11 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 //ROS_INFO("I am publishing the new map and odom topics!");
                 this->_map_pub.publish(this->_my_map);
                 this->_odom_pub.publish(this->_my_odom);
+
+                // Update the Odometry labeled message and publish.
+                this->_odom_labeled.name = this->_current_name;
+                this->_odom_labeled.odom = this->_my_odom;
+                this->_odom_label_pub.publish(this->_odom_labeled);
 
                 // Update the host list and publish.
                 update_host_list();
@@ -105,9 +112,6 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 for(int i = hosts_to_remove.size(); i > 0; i--)
                     this->_available.erase(this->_available.begin()+i);
             }
-
-            // Since a host has been rmeoved, we need to update the host list.
-            update_host_list();
 
             return;
         }
@@ -362,11 +366,13 @@ void MMArbitrator_NS::update_host_list()
     // First, clear the host list.
     this->_host_list.robotKeys.clear();
 
+    // Add our own name to the host list.
+    this->_host_list.robotKeys.push_back(this->_current_name);
+
     // For every element in the _available array, add that element to the
     // host list array.
     for (int i = 0; i < this->_available.size(); i++) 
     {
-        debug_print("I am inside the 'for' loop!");
         // First, grab the current element of the available hosts.
         std::string element = this->_available.at(i);
 
