@@ -30,6 +30,7 @@ from std_msgs.msg import Bool, Float64
 #------------------------------------------------------------------------------------
 # Custom msg Imports.
 from brian.msg import RobotKeyList
+from brian.msg import OdometryLabeled
 #------------------------------------------------------------------------------------
 # TF2 Imports.
 import tf2_geometry_msgs
@@ -57,20 +58,12 @@ class MM_Listener:
         # Stores subscriber objects which may be deleted later. (NOTE: Not sure if subs can be deleted.)
         self.odom_subs = {None: None}
 
+        self.temp = 0
+
         # First, subscribe to the list of other hosts on the network. This is an initialization step.
         rospy.Subscriber('/host_list', RobotKeyList, self.update_list)
         rospy.sleep(1)
 
-        # Now, iterate through the host list and create subscribers for their odometry and occupancy
-        # grid nodes.
-        """"
-        for host in self.host_list:
-            self.current_host = host
-            rospy.loginfo("Attempting to create publishers for host: " + host)
-            odom_sub_name = "/" + str(host) + "/odom"
-            grid_sub_name = "/" + str(host) + "/odom"
-            rospy.Subscriber(odom_sub_name, Odometry, self.init_odom)
-        """
 
 
     def update_list(self, data):
@@ -88,11 +81,14 @@ class MM_Listener:
             if key not in self.host_list:
                 self.host_list.append(key)
                 self.odom_map[key] = None
-                self.odom_subs[key] = None
+
+                # Create a new odometry subscriber for the new host.
+                new_name = "/" + key + "/odom_labeled"
+                self.odom_subs[key] = rospy.Subscriber(new_name, OdometryLabeled, self.odom_update)
 
 
-    def init_odom(self, data):
-        print("this is temp")
+    def odom_update(self, data):
+        self.odom_map[data.name] = data.odom
 
 
     def init_grid(self, data):
@@ -101,7 +97,7 @@ class MM_Listener:
     def main(self):
         rospy.loginfo("Current hosts:")
         for key in self.host_list:
-            rospy.loginfo(str(key) + "\t: " + str(self.odom_map[key]))
+            rospy.loginfo(str(key) + "\t: " + str(self.odom_map[key].odom.header.frame_id))
 
         if len(self.host_list) == 0:
             print("There don't seem to be any hosts in here!")

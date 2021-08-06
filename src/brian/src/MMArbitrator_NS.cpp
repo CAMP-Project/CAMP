@@ -51,6 +51,10 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 new_map_name.append("/map");
                 this->_odom_pub = n.advertise<nav_msgs::Odometry>(new_odom_name, 10);
                 this->_map_pub = n.advertise<nav_msgs::OccupancyGrid>(new_map_name, 10); 
+
+                std::string odom_labeled_name = this->_current_name;
+                odom_labeled_name.append("odom_labeled");
+                this->_odom_label_pub = n.advertise<brian::OdometryLabeled>(odom_labeled_name, 10);
                 this->_list_pub = n.advertise<brian::RobotKeyList>("/host_list", 10);
             }
             // Lets publish the current robot's information before grabbing other things
@@ -59,6 +63,11 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 //ROS_INFO("I am publishing the new map and odom topics!");
                 this->_map_pub.publish(this->_my_map);
                 this->_odom_pub.publish(this->_my_odom);
+
+                // Update the Odometry labeled message and publish.
+                this->_odom_labeled.name = this->_current_name;
+                this->_odom_labeled.odom = this->_my_odom;
+                this->_odom_label_pub.publish(this->_odom_labeled);
 
                 // Update the host list and publish.
                 update_host_list();
