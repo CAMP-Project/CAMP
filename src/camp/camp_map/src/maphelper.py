@@ -12,7 +12,7 @@ import tf2_geometry_msgs as tfgm
 
 def transform_map(in_map,out_frame,tf_buffer):
     # Declaration to allow tab-completion 
-    in_map = OccupancyGrid()
+    # in_map = OccupancyGrid()
 
     # TODO: account for the possibility of different resolutions?
 
@@ -27,6 +27,10 @@ def transform_map(in_map,out_frame,tf_buffer):
     try:
         target_frame = out_frame
         source_frame = in_map.header.frame_id
+        print("target:")
+        print(target_frame)
+        print("source:")
+        print(source_frame)
 
         # Can transform?
         tf_buffer.can_transform(target_frame, source_frame, rospy.Time(0), rospy.Duration(3.0))
@@ -51,7 +55,7 @@ def transform_map(in_map,out_frame,tf_buffer):
             if i == 2 or i == 3:
                 pointin.point.y = pointin.point.y + in_map.info.height*in_map.info.resolution
             
-            pointout = tfgm.do_transform_pose(pointin, map_transform)
+            pointout = tfgm.do_transform_point(pointin, map_transform)
 
             corner_list_x.append(pointout.point.x)
             corner_list_y.append(pointout.point.y)
@@ -76,7 +80,7 @@ def transform_map(in_map,out_frame,tf_buffer):
         # for each input data point
         for i in range(0,in_map.info.width * in_map.info.height):
             # if the index has useful information
-            if in_map.info[i] != -1:
+            if in_map.data[i] != -1:
                 # find the index's location in meters (point form)
                 new_point.point = index2point(i,in_map.info)
                 # transform the point to the new frame
@@ -86,20 +90,19 @@ def transform_map(in_map,out_frame,tf_buffer):
                 # save the data in the output map
                 if out_map.data[out_index] == -1:
                     # Normal case where this is the first data written to a square
-                    out_map.data[out_index] = in_map.info[i]
+                    out_map.data[out_index] = in_map.data[i]
                 else:
                     # possible case where two data points are assigned to the same square
                     print("double writing is a case that needs consideration")
-                    out_map.data[out_index] = (in_map.info[i] + out_map.data[out_index])/2
+                    out_map.data[out_index] = (in_map.data[i] + out_map.data[out_index])/2
         
         return out_map
 
 
     # If the transform cannot occur (an exception has been raised), catch it, and sleep.
-    except (tfr.LookupException, tfr.ConnectivityException, tfr.ExtrapolationException):
+    except (tfr.LookupException, tfr.ConnectivityException, tfr.ExtrapolationException) as e:
         print("Transform Problem!!")
-        print("consider this an error thrown")
-        print("or maybe the error should pass through and be caught when this function is called.")
+        print(e)
         rospy.sleep(1)
         return -1
 

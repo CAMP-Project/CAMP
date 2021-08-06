@@ -47,7 +47,7 @@ class Camp_Map_Export:
     def map_subscriber(self, data):
         print("Data received!")
         self.read_map = True
-        new_map =  data
+        new_map = data
         
         tfd_map = mh.transform_map(new_map,self.output_frame,self.tf_buffer)
         if tfd_map == -1:

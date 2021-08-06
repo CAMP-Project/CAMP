@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+
+<launch>
+  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+
+  <include file="$(find camp_pathfinding)/launch/map.launch" />
+
+  <include file="$(find camp_map)/launch/dummy_transform.launch" />
+  <include file="$(find camp_map)/launch/export.launch" >
+    <arg name="map_in" value="map"/>
+    <arg name="map_out" value="test_map"/>
+    <arg name="output_frame" value="testframe"/>
+  </include> 
+  
+</launch>
