@@ -13,6 +13,8 @@
 
 // ROS Messages
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 
@@ -74,7 +76,7 @@ private:
     ros::Subscriber _master_state;
 
     //-------------------------------------------------------------------------------------------
-    // SUBSCRIBERS & PUBLISHERS:
+    // *** SUBSCRIBERS & PUBLISHERS: ***
     // Subscribe to the current robot odometry to later publish
     ros::Subscriber _odom_sub;
     ros::Publisher _odom_pub;
@@ -114,11 +116,17 @@ private:
     fkie_multimaster_msgs::MasterState _my_state;
     std::string _current_name;
 
-    nav_msgs::Odometry _my_odom;
-    nav_msgs::OccupancyGrid _my_map;
-
     // List of all the current hosts obtained by the arbitrator on the current network.
     brian::RobotKeyList _host_list;
+
+    //-------------------------------------------------------------------------------------------
+    // *** DECAWAVE/ODOM MAPS/POSITIONS
+
+    // Variables to hold on to the callback outputs.
+    nav_msgs::Odometry _my_odom;
+    nav_msgs::OccupancyGrid _my_map;
+    geometry_msgs::Twist _my_deca;
+    nav_msgs::OccupancyGrid _deca_map;
 
     // Variables to hold on to a labeled version of odometry and decawave for the current bot.
     brian::OdometryLabeled _odom_labeled;
@@ -128,6 +136,7 @@ private:
     // as well as the transformed deca-based occupancy grid for the current bot.
     brian::OccupancyMapLabeled _odom_map_labeled;
     brian::DecawaveMapLabeled _deca_map_labeled;
+    //-------------------------------------------------------------------------------------------
 
     // ROS Service servers
     ros::ServiceServer _map_service_server;
@@ -139,13 +148,19 @@ private:
     void mm_position_callback(std::string, const nav_msgs::Odometry::ConstPtr&);
 
     // Odometry sub callback for local odometry
-    void _position_callback(const nav_msgs::Odometry::ConstPtr&);
+    void _odom_position_callback(const nav_msgs::Odometry::ConstPtr&);
+
+    // Twist sub callback for deca position
+    void _deca_position_callback(const geometry_msgs::Twist::ConstPtr&);
 
     // Map sub callback for multimaster
     void mm_map_callback(std::string, const nav_msgs::OccupancyGrid::ConstPtr&);
 
     // Map sub callback for local map
-    void _map_callback(const nav_msgs::OccupancyGrid::ConstPtr&);
+    void _odom_map_callback(const nav_msgs::OccupancyGrid::ConstPtr&);
+
+    // Map sub callback for deca map
+    void _deca_map_callback(const nav_msgs::OccupancyGrid::ConstPtr&); 
 
     // MasterState callback
     void master_state_callback(const fkie_multimaster_msgs::MasterState::ConstPtr&);
