@@ -34,6 +34,9 @@
 // Custom Messages
 #include "brian/RobotKeyList.h"
 #include "brian/OdometryLabeled.h"
+#include "brian/OccupancyMapLabeled.h"
+#include "brian/DecawaveLabeled.h"
+#include "brian/DecawaveMapLabeled.h"
 
 // Preprocessor Definitions
 #define DEBUG 1
@@ -70,19 +73,33 @@ private:
     // Information about the system running this node
     ros::Subscriber _master_state;
 
-    // Subscriber to the current robot odometry to later publish
+    //-------------------------------------------------------------------------------------------
+    // SUBSCRIBERS & PUBLISHERS:
+    // Subscribe to the current robot odometry to later publish
     ros::Subscriber _odom_sub;
     ros::Publisher _odom_pub;
+
+    // Publisher for a labeled version of the robot's odometry
+    ros::Publisher _odom_label_pub;
 
     // Subscribe to the current robot map to later publish
     ros::Subscriber _map_sub;
     ros::Publisher _map_pub;
 
+    // Publisher for a labeled version of the robot's occupancy grid
+    ros::Publisher _map_label_pub;
+
+    // Subscribe to the current robot's decawave pose to later publish
+    ros::Subscriber _deca_label_sub;
+    ros::Publisher _deca_label_pub;
+
+    // Subscribe to the current robot deca-map to later publish
+    ros::Subscriber _deca_map_label_sub;
+    ros::Publisher _deca_map_label_pub;
+
     // Publisher for the MMA-generated hostlist
     ros::Publisher _list_pub;
-
-    // Publisher for Odometry Labeled value
-    ros::Publisher _odom_label_pub;
+    //-------------------------------------------------------------------------------------------
 
     // List of other hosts on the network
     std::vector<std::string> _available;
@@ -103,8 +120,14 @@ private:
     // List of all the current hosts obtained by the arbitrator on the current network.
     brian::RobotKeyList _host_list;
 
-    // Variable to hold on to a labeled version of odometry
+    // Variables to hold on to a labeled version of odometry and decawave for the current bot.
     brian::OdometryLabeled _odom_labeled;
+    brian::DecawaveLabeled _deca_labeled;
+
+    // Variables to hold on to a labeled version of the odom-based occupancy grid for the current bot
+    // as well as the transformed deca-based occupancy grid for the current bot.
+    brian::OccupancyMapLabeled _odom_map_labeled;
+    brian::DecawaveMapLabeled _deca_map_labeled;
 
     // ROS Service servers
     ros::ServiceServer _map_service_server;

@@ -55,6 +55,9 @@ add_message_files(
   FILES
   RobotKeyList.msg
   OdometryLabeled.msg
+  DecawaveLabeled.msg
+  OccupancyMapLabeled.msg
+  DecawaveMapLabeled.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -380,8 +380,9 @@ void MMArbitrator_NS::update_host_list()
         this->_host_list.robotKeys.push_back(element);
 
         // Debug statement to confirm the correct values are being entered into the host list.
-        debug_print("---Value at index " + std::to_string(i) + ": " + element.c_str());
+        // debug_print("---Value at index " + std::to_string(i) + ": " + element.c_str());
     }
 
-    debug_print("The host list has " + std::to_string(this->_host_list.robotKeys.size()) + " elements!");
+    // Print how many hosts are currently in the host list. Should always be at least one: itself.
+    // debug_print("The host list has " + std::to_string(this->_host_list.robotKeys.size()) + " elements!");
 } 

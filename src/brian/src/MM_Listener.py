@@ -88,13 +88,14 @@ class MM_Listener:
 
 
     def odom_update(self, data):
+        #print("The odom callback is being triggered!")
         self.odom_map[data.name] = data.odom
 
 
     def main(self):
         rospy.loginfo("Current hosts:")
         for key in self.host_list:
-            rospy.loginfo(str(key) + "\t: " + str(self.odom_map[key].odom.header.frame_id))
+            rospy.loginfo(str(key) + "\t: " + str(self.odom_map[key].header.frame_id))
 
         if len(self.host_list) == 0:
             print("There don't seem to be any hosts in here!")
