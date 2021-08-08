@@ -36,7 +36,8 @@ class Camp_Map_Export:
         self.tf_listener = tfr.TransformListener(self.tf_buffer)
 
         self.read_map = False
-        self.map_published = False
+
+        self.next_map = OccupancyGrid()
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -47,14 +48,7 @@ class Camp_Map_Export:
     def map_subscriber(self, data):
         print("Data received!")
         self.read_map = True
-        new_map = data
-        
-        tfd_map = mh.transform_map(new_map,self.output_frame,self.tf_buffer)
-        if tfd_map == -1:
-            print("transform failed, map not updated.")
-        else:
-            self.map_publisher.publish(tfd_map)
-            self.map_published = True
+        self.next_map = data
         print("finished the callback")
 
 
@@ -63,14 +57,16 @@ class Camp_Map_Export:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
         
-        # main doesn't really do anythin right now.
+        # main doesn't really do anything right now.
         if self.read_map:
-            print("read a map")
+            print("transforming map...")
+            tfd_map = mh.transform_map(self.next_map,self.output_frame,self.tf_buffer)
+            if tfd_map == -1:
+                print("transform failed, map not updated.")
+            else:
+                self.map_publisher.publish(tfd_map)
+                print("published a map")
             self.read_map = False
-        if self.map_published:
-            print("published a map")
-            self.map_published = False
-        
 
             
 
@@ -82,4 +78,4 @@ if __name__ == '__main__':
         path.main()
 
         # Run at 10 Hz.
-        rospy.sleep(0.2)
+        rospy.sleep(1)

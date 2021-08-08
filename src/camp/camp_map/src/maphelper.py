@@ -330,14 +330,28 @@ def interpolate(point,map):
         print("bl: "+str(bl)+", br: "+str(br))
         print("len: " + str(len(map.data)))
     
-    # TODO: handle -1s somehow...
-    #if tl_data == -1
+    #handle -1s
+    if tl_data == -1:
+        top = tr_data
+    elif tr_data == -1:
+        top = tl_data
+    else:
+        top = tl_data*(1-x_diff) + tr_data*(x_diff)
 
-    top = tl_data*(1-x_diff) + tr_data*(x_diff)
-    bot = bl_data*(1-x_diff) + br_data*(x_diff)
+    if bl_data == -1:
+        bot = br_data
+    elif br_data == -1:
+        bot = bl_data
+    else:
+        bot = bl_data*(1-x_diff) + br_data*(x_diff)
 
     # now interpolate between top and bottom to true y value.
-    value = bot*(1-y_diff) + top*(y_diff)
+    if bot == -1:
+        value = top
+    elif top == -1:
+        value = bot
+    else:
+        value = bot*(1-y_diff) + top*(y_diff)
 
     return value
 
