@@ -76,16 +76,6 @@ class TF_Receiver:
 
     def main(self):
 
-        # GRAB THE TRANSFORM DATA FROM THE TF TREE AND CONVERT THE ODOMETRY POSE TO A DECAWAVE POSE                                            
-
-        # COMPARE THE ODOM -> DECA TRANSFORM DATA TO FILTERED DECA DATA
-
-        # COMPUTE ERROR
-
-        # COMPARE PUBLISHED TRANSFORM TO TF BROADCASTED TRANSFORM
-
-        # COMPUTE ERROR
-
         # Method to organize object pose information into a PoseStamped object for easy transformations.
         def computePose(x, y, theta, frameID):
             # Instantiate a new PoseStamped with object data.

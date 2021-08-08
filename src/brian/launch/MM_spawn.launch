@@ -3,7 +3,7 @@
 <launch>
 
   <!--node pkg="kalman_filter" type="kalman_filter_EKF.py" name="EKF" /-->
-  <node pkg="brian" type="MM_Map_Occupancy_Spawner.py" name="MMS" output="screen"/>
+  <node pkg="brian" type="MM_Topic_Spawner.py" name="MMS" output="screen"/>
   
   
 </launch>
