@@ -58,12 +58,15 @@ class MM_tester:
         self.decaPublisher = rospy.Publisher('deca', Twist, queue_size=10)
         self.decaMapPublisher = rospy.Publisher('deca_map', OccupancyGrid, queue_size=10)
 
+        rospy.loginfo("Preparing topics.")
+
         # Create variables to hold the desired structures. 
         """"
         --------------------------
         First: Odometry.
         --------------------------
         """
+        rospy.loginfo("Generating odometry...")
         self.odom = Odometry()
         self.odom.header.frame_id = 'Turtlebot_Odom'
         self.odom.header.stamp = rospy.Time()
@@ -83,6 +86,7 @@ class MM_tester:
         Second: Odom-based Map.
         --------------------------
         """
+        rospy.loginfo("Generating map...")
         self.odom_map = OccupancyGrid()
         self.odom_map.header.frame_id = 'Odom_Map'
         self.odom_map.header.stamp = rospy.Time()
@@ -96,6 +100,7 @@ class MM_tester:
         Third: Decawave Position.
         --------------------------
         """
+        rospy.loginfo("Generating decawave...")
         self.deca = Twist()
         self.deca.linear.x = 2
         self.deca.linear.y = 4
@@ -106,6 +111,7 @@ class MM_tester:
         Third: Deca-based Map.
         --------------------------
         """
+        rospy.loginfo("Generating decawave map...")
         self.deca_map = OccupancyGrid()
         self.deca_map.header.frame_id = 'Deca_Map'
         self.deca_map.header.stamp = rospy.Time()
@@ -118,13 +124,14 @@ class MM_tester:
     def main(self):
         # Update the stamps of the objects.
         self.odom.header.stamp = rospy.Time()
-        self.map.header.stamp = rospy.Time()
+        self.odom_map.header.stamp = rospy.Time()
         self.deca_map.header.stamp = rospy.Time()
 
         # Publish those objects to ROS.
         self.odomPublisher.publish(self.odom)
-        self.odomMapPublisher.publish(self.map)
+        self.odomMapPublisher.publish(self.odom_map)
         self.decaMapPublisher.publish(self.deca_map)
+        self.decaPublisher.publish(self.deca)
 
 
 if __name__== '__main__':
@@ -133,4 +140,4 @@ if __name__== '__main__':
         tester.main()
 
         # Run at 10 Hz.
-        rospy.sleep(0.1)
+        rospy.sleep(1)
