@@ -66,7 +66,7 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 // Setup a publisher for labeled odom map.
                 std::string odom__map_labeled_name = this->_current_name;
                 odom__map_labeled_name.append("/odom_map_labeled");
-                this->_map_label_pub = n.advertise<brian::OdometryLabeled>(odom__map_labeled_name, 10);
+                this->_map_label_pub = n.advertise<brian::OccupancyMapLabeled>(odom__map_labeled_name, 10);
 
                 // Setup a publisher for labeled deca position.
                 std::string deca_labeled_name = this->_current_name;

@@ -55,7 +55,7 @@ class MM_tester:
         # Instantiate two publishers for an Odometry node and OccupancyGrid node.
         self.odomPublisher = rospy.Publisher('odom', Odometry, queue_size=10)
         self.odomMapPublisher = rospy.Publisher('odom_map', OccupancyGrid, queue_size=10)
-        self.decaPublisher = rospy.Publisher('deca', Twist, queue_size=10)
+        self.decaPublisher = rospy.Publisher('filtered', Twist, queue_size=10)
         self.decaMapPublisher = rospy.Publisher('deca_map', OccupancyGrid, queue_size=10)
 
         rospy.loginfo("Preparing topics.")

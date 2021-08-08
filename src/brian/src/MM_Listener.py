@@ -57,16 +57,16 @@ class MM_Listener:
         self.current_host = None
 
         # Add map variables in which to store incoming data.
-        self.odom_map = {None: None} # Odom-based map storage.
-        self.odom_pos = {None: None} # Odom-based positional storage.
-        self.deca_map = {None: None} # Deca-based map storage.
-        self.deca_pos = {None: None} # Deca-based positional storage.
+        self.odom_map = {} # Odom-based map storage.
+        self.odom_pos = {} # Odom-based positional storage.
+        self.deca_map = {} # Deca-based map storage.
+        self.deca_pos = {} # Deca-based positional storage.
 
         # Stores subscriber objects which may be deleted later. (NOTE: Not sure if subs can be deleted.)
-        self.odom_pos_subs = {None: None} # Odom-based positional subscriber storage.
-        self.odom_map_subs = {None: None} # Odom-based map subscriber storage.
-        self.deca_pos_subs = {None: None} # Deca-based positional subscriber storage.
-        self.deca_map_subs = {None: None} # Deca-based map subscriber storage.
+        self.odom_pos_subs = {} # Odom-based positional subscriber storage.
+        self.odom_map_subs = {} # Odom-based map subscriber storage.
+        self.deca_pos_subs = {} # Deca-based positional subscriber storage.
+        self.deca_map_subs = {} # Deca-based map subscriber storage.
 
         # Subscribe to the list of other roscores on the current network.
         rospy.Subscriber('/host_list', RobotKeyList, self.update_list)
@@ -104,11 +104,14 @@ class MM_Listener:
             if key not in self.host_list:
                 self.host_list.append(key)
                 self.odom_map[key] = None
+                self.odom_pos[key] = None
+                self.deca_map[key] = None
+                self.deca_pos[key] = None
 
                 # Create a new odometry subscriber for the new host.
-                odom_pos_label = "/" + key + "/odom_pos_labeled"
+                odom_pos_label = "/" + key + "/odom_labeled"
                 odom_map_label = "/" + key + "/odom_map_labeled"
-                deca_pos_label = "/" + key + "/deca_pos_labeled"
+                deca_pos_label = "/" + key + "/deca_labeled"
                 deca_map_label = "/" + key + "/deca_map_labeled"
                 self.odom_pos_subs[key] = rospy.Subscriber(odom_pos_label, OdometryLabeled, self.odom_pos_update)
                 self.odom_map_subs[key] = rospy.Subscriber(odom_map_label, OccupancyMapLabeled, self.odom_map_update)
@@ -118,40 +121,70 @@ class MM_Listener:
 
     # Callback function for obtaining odometry position data.
     def odom_pos_update(self, data):
+        print("The odom position is being updated")
         self.odom_pos[data.name] = data.odom
 
 
     # Callback function for obtaining odometry map data.
     def odom_map_update(self, data):
+        print("The odom map is being updated")
         self.odom_map[data.name] = data.map
 
 
     # Callback function for obtaining decawave position data.
     def deca_pos_update(self, data):
+        print("The deca position is being updated")
         self.deca_pos[data.name] = data.pose
 
 
     # Callback function for obtaining decawave map data.
     def deca_map_update(self, data):
+        print("The deca map is being updated")
         self.deca_map[data.name] = data.map
 
 
     def main(self):
+
+        # Method to check for None values in data maps.
+        def contains_none():
+            # For every key currently in the host list, check whether the storage maps have been updated
+            # with non-None data. If so, return False. 
+            for key in self.host_list:
+                odom_pos_val = self.odom_pos[key]
+                odom_map_val = self.odom_map[key]
+                deca_pos_val = self.deca_pos[key]
+                deca_map_val = self.deca_map[key]
+                if (odom_pos_val is None) or (odom_map_val is None) or (deca_pos_val is None) or (deca_map_val is None):
+                    print(type(odom_pos_val))
+                    print(type(odom_map_val))
+                    print(type(deca_pos_val))
+                    print(type(deca_map_val))
+                    return True
+            
+            print("There are no None values!")
+            return False
+
         rospy.loginfo("Current hosts:")
+        print(self.host_list)
+        print(list(self.odom_map.keys()))
+        print(list(self.odom_pos.keys()))
+        print(list(self.deca_map.keys()))
+        print(list(self.deca_pos.keys()))
         for key in self.host_list:
-            rospy.loginfo(str(key) + "\t: " + str(self.odom_map[key].header.frame_id))
+            if not contains_none():
+                rospy.loginfo(str(key) + ":")
+                rospy.loginfo("--Odom Pos\t: " + str(self.odom_pos[key].header.frame_id))
+                rospy.loginfo("--Odom Map\t: " + str(self.odom_map[key].header.frame_id))
+                rospy.loginfo("--Deca Pos\t: " + str(self.deca_pos[key].header.frame_id))
+                rospy.loginfo("--Deca Map\t: " + str(self.deca_map[key].header.frame_id))
 
         if len(self.host_list) == 0:
             print("There don't seem to be any hosts in here!")
 
 
-
-
-
 if __name__== '__main__':
     MML = MM_Listener()
     while not rospy.is_shutdown():
-        MML.main()
-
         # Run at 10 Hz.
         rospy.sleep(1)
+        MML.main()
