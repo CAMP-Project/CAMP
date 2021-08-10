@@ -416,20 +416,13 @@ def combine_map(in_map,old_map):
         for n in range(0,in_map.info.height):
             new_value = in_map.data[m + n * in_map.info.width]
             if new_value != -1 and new_value != 50:
-                #print("x:"+str(m+diff_x)+" y:"+str(n+diff_y)+" w:"+str(out_map.info.width)+" h:"+str(out_map.info.height))
                 old_value = out_map.data[m+diff_x + (n+diff_y) * out_map.info.width]
                 if old_value == -1:
-                    old_value = 50
-                if old_value == 0:
-                    old_value = 1
-                ### MERGING FORMULA ###
-                # TODO: review asymmetry concerns, 0-handling.
-                result = int(round(old_value * math.pow(new_value*1.0/old_value,gamma)))
-                # if result == 63:
-                #     print("got a 63!")
-                #     print(old_value)
-                #     print(new_value)
-                #     print
+                    result = new_value/100
+                else:
+                    old_value = old_value * 0.98 + 1
+                    new_value = new_value * 0.98 + 1
+                    result = int(round(100/0.98*(old_value * math.pow(new_value/old_value,gamma))))
                 out_map.data[m+diff_x + (n+diff_y) * out_map.info.width] = result
     # print(max(out_map.data))
     # print(min(out_map.data))
