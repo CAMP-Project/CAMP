@@ -420,9 +420,11 @@ def combine_map(in_map,old_map):
                 if old_value == -1:
                     result = new_value/100
                 else:
-                    old_value = old_value * 0.98 + 1
-                    new_value = new_value * 0.98 + 1
+                    old_value = old_value * 0.0098 + 0.01
+                    new_value = new_value * 0.0098 + 0.01
                     result = int(round(100/0.98*(old_value * math.pow(new_value/old_value,gamma))))
+                    if result > 100:
+                        result = 100
                 out_map.data[m+diff_x + (n+diff_y) * out_map.info.width] = result
     # print(max(out_map.data))
     # print(min(out_map.data))
