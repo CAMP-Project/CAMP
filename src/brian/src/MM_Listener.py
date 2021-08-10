@@ -133,8 +133,8 @@ class MM_Listener:
 
     # Callback function for obtaining decawave position data.
     def deca_pos_update(self, data):
-        print("The deca position is being updated")
-        print(type(data.pose))
+        #print("The deca position is being updated")
+        #print(type(data.pose))
         self.deca_pos[data.name] = data.pose
 
 
@@ -155,11 +155,7 @@ class MM_Listener:
                 odom_map_val = self.odom_map[key]
                 deca_pos_val = self.deca_pos[key]
                 deca_map_val = self.deca_map[key]
-                if (odom_pos_val is None) or (odom_map_val is None) or """(deca_pos_val is None)""" or (deca_map_val is None):
-                    print(type(odom_pos_val))
-                    print(type(odom_map_val))
-                    print(type(deca_pos_val))
-                    print(type(deca_map_val))
+                if (odom_pos_val is None) or (odom_map_val is None) or (deca_pos_val is None) or (deca_map_val is None):
                     return True
             
             print("There are no None values!")
