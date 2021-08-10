@@ -62,7 +62,7 @@ class MM_Listener:
         self.deca_map = {} # Deca-based map storage.
         self.deca_pos = {} # Deca-based positional storage.
 
-        # Stores subscriber objects which may be deleted later. (NOTE: Not sure if subs can be deleted.)
+        # Stores subscriber objects which may be deleted later.
         self.odom_pos_subs = {} # Odom-based positional subscriber storage.
         self.odom_map_subs = {} # Odom-based map subscriber storage.
         self.deca_pos_subs = {} # Deca-based positional subscriber storage.
