@@ -111,6 +111,7 @@ void MMArbitrator_NS::sync(ros::NodeHandle n)
                 this->_deca_labeled.pose.pose.orientation.y = q.y();
                 this->_deca_labeled.pose.pose.orientation.z = q.z();
                 this->_deca_labeled.pose.pose.orientation.w = q.w();
+                this->_deca_label_pub.publish(_deca_labeled);
 
                 // Update the Decawave map labeled message and publish.
                 this->_deca_map_labeled.name = this->_current_name;

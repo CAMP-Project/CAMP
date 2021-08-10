@@ -121,25 +121,26 @@ class MM_Listener:
 
     # Callback function for obtaining odometry position data.
     def odom_pos_update(self, data):
-        print("The odom position is being updated")
+        #print("The odom position is being updated")
         self.odom_pos[data.name] = data.odom
 
 
     # Callback function for obtaining odometry map data.
     def odom_map_update(self, data):
-        print("The odom map is being updated")
+        #print("The odom map is being updated")
         self.odom_map[data.name] = data.map
 
 
     # Callback function for obtaining decawave position data.
     def deca_pos_update(self, data):
         print("The deca position is being updated")
+        print(type(data.pose))
         self.deca_pos[data.name] = data.pose
 
 
     # Callback function for obtaining decawave map data.
     def deca_map_update(self, data):
-        print("The deca map is being updated")
+        #print("The deca map is being updated")
         self.deca_map[data.name] = data.map
 
 
@@ -154,7 +155,7 @@ class MM_Listener:
                 odom_map_val = self.odom_map[key]
                 deca_pos_val = self.deca_pos[key]
                 deca_map_val = self.deca_map[key]
-                if (odom_pos_val is None) or (odom_map_val is None) or (deca_pos_val is None) or (deca_map_val is None):
+                if (odom_pos_val is None) or (odom_map_val is None) or """(deca_pos_val is None)""" or (deca_map_val is None):
                     print(type(odom_pos_val))
                     print(type(odom_map_val))
                     print(type(deca_pos_val))
