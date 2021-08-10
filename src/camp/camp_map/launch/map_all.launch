@@ -15,14 +15,11 @@
   <include file="$(find kalman_filter)/launch/EKF.launch" />
 
   <!--Launch the Calibrator-->
-  <include file="$(find camp_goto)/launch/Calibrator_py.launch" />
+  <include file="$(find camp_goto)/launch/calibrator_py.launch" />
 
   <!--Launch the map merger-->
-  <!--Needs revisiting after merger rewrite-->
-  <include file="$(find camp_map)/launch/merge.launch" >
-    <arg name="map1" value="map"/>
-    <arg name="map2" value="deca_map"/>
-    <arg name="frame" value="map"/>
+  <include file="$(find camp_map)/launch/multimerge.launch" >
+    <arg name="local_map_name" value="map"/>
   </include> 
 
   <!--Launch map exporter-->

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="local_map_name" />
+
+  <param name="local_map_name" value="$(arg local_map_name)"/>
+  
+  <node pkg="camp_map" type="multiagent_merge.py" name="multi_merge" output="screen" />
+  
+</launch>
