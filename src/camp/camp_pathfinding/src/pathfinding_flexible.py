@@ -118,15 +118,16 @@ class Pathfinding_Node:
     #--------------------------------------------------------------------------------------------------------------
     def __init__(self): 
         # number of directions to look when deciding on a direction
-        self.direction_count = 12
+        self.direction_count = int(rospy.get_param('direction_count', '12'))
         #number of waypoints to generate
-        self.waypoint_count = 4
+        self.waypoint_count = int(rospy.get_param('waypoint_count', '4'))
 
         # Have ROS initialize this script as a node in rqt.
         rospy.init_node('pathfinding', anonymous = False)
 
         # Subscribe to map.
-        rospy.Subscriber('/map', OccupancyGrid, self.updateMap)      
+        map_name = "/" + str(rospy.get_param('map_name', 'map'))
+        rospy.Subscriber(map_name, OccupancyGrid, self.updateMap)      
         
         # Subscribe to LiDAR.
         rospy.Subscriber('/scan', LaserScan, self.updateLidarScan)

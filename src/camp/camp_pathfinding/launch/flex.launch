@@ -2,6 +2,14 @@
 
 <launch>
 
+  <arg name="direction_count" default="12" />
+  <arg name="waypoint_count" default="4" />
+  <arg name="map_name" default="map" />
+
+  <param name="direction_count" value="$(arg direction_count)"/>
+  <param name="waypoint_count" value="$(arg waypoint_count)"/>
+  <param name="map_name" value="$(arg map_name)"/>
+
   <node pkg="camp_pathfinding" type="pathfinding_flexible.py" name="pathfinding" output="screen" />
   
   

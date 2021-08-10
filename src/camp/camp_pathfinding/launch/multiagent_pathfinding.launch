@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+  <include file="$(find camp_pathfinding)/launch/flex.launch" >
+    <arg name="direction_count" value="12"/>
+    <arg name="waypoint_count" value="4"/>
+    <arg name="map_name" value="merged_map"/>
+  </include> 
+  
+</launch>
