@@ -42,6 +42,9 @@ import time
 import numpy as np
 import cv2 as cv
 
+import tf2_ros as tfr
+import tf2_geometry_msgs as tfgm
+
 from rospy.core import rospyinfo
 roslib.load_manifest('rospy')
 
@@ -194,6 +197,10 @@ class Pathfinding_Node:
 
         self.backup = False
 
+        self.tf_buffer = tfr.Buffer(rospy.Duration(1200.0)) #tf buffer length
+        self.tf_listener = tfr.TransformListener(self.tf_buffer)
+        self.transform_destination = True
+
 
     #--------------------------------------------------------------------------------------------------------------
     # Subscription update methods.
@@ -262,12 +269,29 @@ class Pathfinding_Node:
         def publishWaypoints():
 
             command = Cmd()
+            cmdpoint = PointStamped()
+
             try:
-                command.destination = self.waypoints[0].point
+                cmdpoint.point = self.waypoints[0].point
             except:
                 print("destination publish failed")
                 printWaypoints()
                 exit()
+            cmdpoint.header = self.mapActual.header
+            if self.transform_destination == True:
+                try:
+                    target_frame = self.odom.header.frame_id
+                    source_frame = self.mapActual.header.frame_id
+
+                    self.tf_buffer.can_transform(target_frame, source_frame, rospy.Time(0), rospy.Duration(3.0))
+                    transform = self.tf_buffer.lookup_transform(target_frame, source_frame, rospy.Time(0))
+
+                    cmdpoint = tfgm.do_transform_point(cmdpoint, transform)
+                except Exception as e:
+                    print("command point transform failed!")
+                    print(e)
+
+            command.destination = cmdpoint.point
             command.stop = False
             command.is_relative = False
             command.is_deca = False
@@ -504,7 +528,7 @@ class Pathfinding_Node:
 
                 listPoi(max_x,max_y)
                 
-                path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],freemap)
+                path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],freemap,[max_x,max_y])
 
                 self.waypoints = [Waypoint('none') for i in range(1,len(path)/2)]
                 print("all waypoints deleted")
@@ -534,7 +558,7 @@ class Pathfinding_Node:
             for w in self.waypoints:
                 print(w)
 
-        def makePath(path,map):
+        def makePath(path,map,poi):
             print("/!\ making a path /!\\")
             print(path)
             size = int(1/self.mapActual.info.resolution)
@@ -627,18 +651,28 @@ class Pathfinding_Node:
                     print(map[meter2grid(gy-0.5,'y'):meter2grid(gy+0.5,'y'),meter2grid(gx-0.5,'x'):meter2grid(gx+0.5,'x')])
                     print(str(gx)+","+str(gy))
                     print("goalsum fail")
+                    # Set the POI to 100
+                    poi_x = math.floor((poi[0]-self.poi.info.origin.position.x)/self.poi.info.resolution)
+                    poi_y = math.floor((poi[1]-self.poi.info.origin.position.y)/self.poi.info.resolution)
+                    index = int(poi_x + self.poi.info.width * poi_y)
+                    self.poi.data[index] = 100
+                    return [sx,sy,sx,sy]
                     exit()
                 newval = startsum + goalsum
                 if newval == val:
                     # something needs to happen here so the POI gets shrown out, but i don't know how yet. maybe errors or exceptions?
                     print("no path available")
-                    exit()
-                    return
+                    # Set the POI to 100
+                    poi_x = math.floor((poi[0]-self.poi.info.origin.position.x)/self.poi.info.resolution)
+                    poi_y = math.floor((poi[1]-self.poi.info.origin.position.y)/self.poi.info.resolution)
+                    index = int(poi_x + self.poi.info.width * poi_y)
+                    self.poi.data[index] = 100
+                    return [sx,sy,sx,sy]
                 val = newval
             
             # handle recursion
-            firsthalf = makePath([sx,sy,mx,my],map)
-            secondhalf = makePath([mx,my,gx,gy],map)
+            firsthalf = makePath([sx,sy,mx,my],map,poi)
+            secondhalf = makePath([mx,my,gx,gy],map,poi)
             path = firsthalf + [secondhalf[i] for i in range(2,len(secondhalf))]
             print(path)
             return path
