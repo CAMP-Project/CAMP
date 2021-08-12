@@ -657,7 +657,6 @@ class Pathfinding_Node:
                     index = int(poi_x + self.poi.info.width * poi_y)
                     self.poi.data[index] = 100
                     return [sx,sy,sx,sy]
-                    exit()
                 newval = startsum + goalsum
                 if newval == val:
                     # something needs to happen here so the POI gets shrown out, but i don't know how yet. maybe errors or exceptions?
