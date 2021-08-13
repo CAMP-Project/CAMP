@@ -1,47 +1,27 @@
 #!/usr/bin/env python
-#----------------------------------------------------------------------------------------
-# Original Author : Sean Carda
-# Project         : Coordinated Autonomous Movement & Pathfinding (CAMP)
-# Original Date   : 4/15/2021
-# Description     : This code is adapted from an algorithm developed by Dr. Michael 
-#                   McCourt. This code uses LiDAR and probabilistic map data to 
-#                   generate waypoints for robotic pathfinding. 
-#
-#
-#
-# Change Log:
-#
-# 4/15/2021 - Sean Carda: Created script and initial methods.
-#
-# 5/5/2021  - Sean Carda: Finalized the code. It is entirely possible that more
-#                         edits will be necessary.
-#
-# 6/25/2021 - Tyler Pigott: Tried to fix the map extention error
-#
-#
-#----------------------------------------------------------------------------------------
+"""Pathfinding Flexible
+Adapted from Sean Carda's code by Tyler Pigott
+Last updated 8/12/2021
+This code attempts to allow for more flexibility, including launch file parameters 
+to change the number of directions to consider and waypoints to keep.
+This code also implements a long-distance pathfinding technique."""
 
-
-# FOR DEVELOPMENT
-# ---------------
-# This code will subscribe to multiple Turtlebot topics such as its odometry and map.
-# This code will use odometry to localize itself within the map. It will use map
-# data to determine where to scan and where to generate waypoints.
-# The current functionality outline of this code is as follows (this is subject to change):
-# 1. Initialize a set of waypoints in one direction.
-# 2. Check lidar distances.
-# 3a. If no objects are detected to impede movement, travel to waypoint, shift waypoints, and create new waypoint.
-# 3b. If an object is detected, reset the waypoint list. 
+# TODO adjust odometry input to get a "robot position" in map frame.
 
 # Package imports.
-import math
+# ros stuff
 import roslib
 import rospy
+
+# Basic stuff
+import math
 import time
 
+# Image processing tools
 import numpy as np
 import cv2 as cv
 
+# Transforms
 import tf2_ros as tfr
 import tf2_geometry_msgs as tfgm
 
@@ -56,28 +36,35 @@ from sensor_msgs.msg import LaserScan
 from camp_goto.msg import Cmd
 
 class Waypoint:
-    def __init__(self,pub='none',x=0,y=0,theta=0):
-        self.point = Point(x,y,0)
-        self.heading = theta
-        self.viz_publisher = pub
-        # self.viz_publisher = rospy.Publisher('waypoint_'+str(num), PointStamped, queue_size = 10)
-
-    # def __del__(self):
-    #     self.viz_publisher.unregister()
-
+    """The waypoint object allows for some abstraction, allowing for easier list management and function use.
+    This was mostly added to help allow variable amounts of poits in the list."""
     
+    # init function
+    def __init__(self,pub='none',x=0,y=0,theta=0):
+        # create a point with the x and y data
+        self.point = Point(x,y,0)
+        # keep track of the theta used to calculate this point. it helps straighten out points in the adjust functions.
+        self.heading = theta
+        # if a publisher is passed in this argument, the point will be published on a self.publish() call for rviz visualization.
+        self.viz_publisher = pub
+    
+    # ToString function
     def __str__(self):
-        return "Point "+str(self.num)+":("+str(self.point.x)+","+str(self.point.y)+") @ "+str(self.heading)
+        # return the coordinate data and heading data as a string.
+        return "("+str(self.point.x)+","+str(self.point.y)+") @ "+str(self.heading)
         
     def publish(self):
+        # publish this waypoint as a PointStamped if a publisher is provided
         if isinstance(self.viz_publisher, rospy.Publisher):
             # Result as a PointStamp.
             result_viz = PointStamped()
             result_viz.point = self.point
             result_viz.header.stamp = rospy.Time()
+            # TODO: replace with a variable frame?
             result_viz.header.frame_id = "map"
             self.viz_publisher.publish(result_viz)
-
+    
+    # Function that adjusts the point to help it avoid walls
     def auto_adjust(self,map):
         # convert point from meters to grid squares (i don't int(round()) this because i do that in the l/r check)
         x = (self.point.x - map.info.origin.position.x)/map.info.resolution
@@ -105,8 +92,10 @@ class Waypoint:
         self.point.y = self.point.y + adjust_y
         #print("points are " + str(left) + " and " + str(right) + " squares away on the left and right respectively")
         print("adjusted the point by "+str(adjust_x)+" x and "+str(adjust_y)+" y.")
+        # return adjustments for the quick_adjust function.
         return [adjust_x,adjust_y]
     
+    # Function that adjusts other points the same way as the auto adjust did
     def quick_adjust(self,adjust):
         self.point.x = self.point.x + adjust[0]
         self.point.y = self.point.y + adjust[1]
@@ -115,11 +104,11 @@ class Waypoint:
 
 
 class Pathfinding_Node:
-
-    #--------------------------------------------------------------------------------------------------------------
-    # Initialization of ROS attributes and global variables.
-    #--------------------------------------------------------------------------------------------------------------
+    """This class implements all the pathfinding bits. It is called in this module's main function."""
+    
+    # Constructor
     def __init__(self): 
+        
         # number of directions to look when deciding on a direction
         self.direction_count = int(rospy.get_param('direction_count', '12'))
         #number of waypoints to generate
@@ -128,7 +117,7 @@ class Pathfinding_Node:
         # Have ROS initialize this script as a node in rqt.
         rospy.init_node('pathfinding', anonymous = False)
 
-        # Subscribe to map.
+        # Subscribe to map defined by rosparam.
         map_name = "/" + str(rospy.get_param('map_name', 'map'))
         rospy.Subscriber(map_name, OccupancyGrid, self.updateMap)      
         
@@ -144,20 +133,15 @@ class Pathfinding_Node:
         # This will publish the computed waypoint information.
         self.point_publisher = rospy.Publisher('go_cmd', Cmd, queue_size = 10)
         
-        # Instantiate publlishers for displaying the waypoints in rviz. This will be invaluable for debugging.
-        # these moved to the new waypoint class
-#         self.viz_publisher_1 = rospy.Publisher('point_viz_1', PointStamped, queue_size = 10)
-#         self.viz_publisher_2 = rospy.Publisher('point_viz_2', PointStamped, queue_size = 10)
-#         self.viz_publisher_3 = rospy.Publisher('point_viz_3', PointStamped, queue_size = 10)
-#         self.viz_publisher_4 = rospy.Publisher('point_viz_4', PointStamped, queue_size = 10)
-        # self.pubs = [rospy.Publisher('waypoint_0', PointStamped, queue_size = 10),rospy.Publisher('waypoint_1', PointStamped, queue_size = 10),rospy.Publisher('waypoint_2', PointStamped, queue_size = 10),rospy.Publisher('waypoint_3', PointStamped, queue_size = 10)]
+        # Instantiate publlishers for displaying the waypoints, as well as the robot and region if inspection in rviz. This will be invaluable for debugging.
         self.pubs = [rospy.Publisher('waypoint_'+str(i), PointStamped, queue_size = 10) for i in range(0,self.waypoint_count)]
         self.region_publisher = rospy.Publisher('region', PointStamped, queue_size = 10)
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
+        
+        # create an occupancy grid publisher to visualize the POI blacklist.
         self.poi_publisher = rospy.Publisher('poi_map', OccupancyGrid, queue_size = 10)
         
-
-        # make waypoint_count number of waypoints
+        # start the waypoint list
         self.waypoints = [Waypoint('none')]
 
         # Initialize important data types. For this script, we need access to the OccupancyGrid produced
@@ -165,7 +149,8 @@ class Pathfinding_Node:
         self.mapActual = OccupancyGrid() 
         self.lidar = LaserScan()                         
         self.odom = Odometry()
-
+        
+        # Start the POI blacklist in the form of an occupancy grid
         self.poi = OccupancyGrid()
         self.poi.header.frame_id = "map"
         self.poi.info.resolution = 1
@@ -192,44 +177,43 @@ class Pathfinding_Node:
         self.satisDist = 0.15 #meters
 
         self.entropyVector = [0, 0, 0, 0, 0, 0, 0, 0]
-
+        
+        # backing up variables
         self.last_backup = False
-
         self.backup = False
-
+        
+        # TF stuff
         self.tf_buffer = tfr.Buffer(rospy.Duration(1200.0)) #tf buffer length
         self.tf_listener = tfr.TransformListener(self.tf_buffer)
         self.transform_destination = True
 
 
     #--------------------------------------------------------------------------------------------------------------
-    # Subscription update methods.
+    # Subscribers
     #--------------------------------------------------------------------------------------------------------------
 
-    # This method will update the map data when new data is available. This methods grabs every paramater
-    # from the generated map.
+    # Map subscriber
     def updateMap(self, data):
         self.mapActual = data
 
-    # This method will update lidar data when new data will be available. This method grabs every parameter 
-    # from the lidar node.
+    # Lidar Subscriber
     def updateLidarScan(self, data):
         self.lidar = data
 
-    # This method will grab information from the robot's odometry.
+    # Odom subscriber
     def updateOdom(self, data):
         self.odom = data
 
-    # Callback to update the backup state.
+    # Backup state subscriber
     def updateBackup(self, data):
         self.backup = data.data
 
     #--------------------------------------------------------------------------------------------------------------
-    # Main Functionality of the Pathfinding algorithm
+    # Main
     #--------------------------------------------------------------------------------------------------------------
     def main(self):        
     
-            # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
+        # Method for obtaining the robot's position as a distance, in meters, relative to the SLAM-generated map.
         def getRoboMapPosition():
             # Use Odometry to get the robot's position.
             result = Vector3()
@@ -265,20 +249,25 @@ class Pathfinding_Node:
             return position_in_units
 
 
-        # Method for publishing waypoints to RQT. 
+        # Method for publishing things
         def publishWaypoints():
-
+            # Wheel command publisher
+            # create a new Cmd object and a PointStamped for transforms
             command = Cmd()
             cmdpoint = PointStamped()
-
+            
+            # try to grab a waypoint. if one doesn't exist, somehting went wrong.
             try:
                 cmdpoint.point = self.waypoints[0].point
             except:
                 print("destination publish failed")
                 printWaypoints()
                 exit()
-            cmdpoint.header = self.mapActual.header
+                
+            #Transform the point if required (it is unless it doesn't work right.)
             if self.transform_destination == True:
+                cmdpoint.header = self.mapActual.header
+                # transform in a try block to catch exceptions
                 try:
                     target_frame = self.odom.header.frame_id
                     source_frame = self.mapActual.header.frame_id
@@ -290,7 +279,8 @@ class Pathfinding_Node:
                 except Exception as e:
                     print("command point transform failed!")
                     print(e)
-
+            
+            # define the Cmd message parameters
             command.destination = cmdpoint.point
             command.stop = False
             command.is_relative = False
@@ -303,15 +293,15 @@ class Pathfinding_Node:
             command.emergency_stop_angle = 30
 
             self.point_publisher.publish(command)
-
+            
+            # publish POI list
             self.poi_publisher.publish(self.poi)
 
-            # Publish the points in rviz.
-            #print("publishing...")
+            # Publish the points in rviz by using the built in function.
             for w in self.waypoints:
                 w.publish()
 
-
+            # Publish robot position
             roboPosX = getRoboMapPosition().x
             roboPosY = getRoboMapPosition().y
             roboPos = PointStamped()
@@ -321,15 +311,19 @@ class Pathfinding_Node:
 
             self.robot_publisher.publish(roboPos)
         
+        # POI map management
         def expand_poi(direction):
+            # expantion amount parameter:
             expand_amount = 2
+            # don't change these ones, it's an intitialization
             xbuffer = 0
             ybuffer = 0
             old_width = self.poi.info.width
             new_width = old_width
             old_height = self.poi.info.height
             new_height = old_height
-
+            
+            # based on the direction parameter, find the new width or height and the buffer amounts
             if direction == "+x":
                 new_width = new_width + expand_amount
             if direction == "-x":
@@ -340,7 +334,8 @@ class Pathfinding_Node:
             if direction == "-y":
                 ybuffer = expand_amount
                 new_height = new_height + expand_amount
-
+            
+            # copy data based on the new width/height and buffers
             newdata = []
             newdata = [-1 for i in range(0,new_width * new_height)]
             for m in range(0,old_width):
@@ -349,6 +344,7 @@ class Pathfinding_Node:
                     new_index = (m + xbuffer) + new_width * (n + ybuffer)
                     newdata[new_index] = self.poi.data[old_index]
             
+            #set metadata
             self.poi.info.width = new_width
             self.poi.info.height = new_height
             self.poi.info.origin.position.x = self.poi.info.origin.position.x - xbuffer * self.poi.info.resolution
@@ -357,14 +353,14 @@ class Pathfinding_Node:
             
             self.poi.data = newdata
 
+        # This function is called after decidign on a point of interest to add it to the list.
         def listPoi(x,y):
+            # adjust to the grid
             x = math.floor((x-self.poi.info.origin.position.x)/self.poi.info.resolution)
             y = math.floor((y-self.poi.info.origin.position.y)/self.poi.info.resolution)
-
-            # if ((x >= self.poi.info.width) or (y >= self.poi.info.width) or (x < 0) or (y < 0)):
-            #     return
-            #print("x: " + str(x) + "y: " + str(y))
-            #print(self.poi.info.width)
+            
+            # make sure you don;t need to expand the map
+            # threshold parameter to allow for wider maps:
             expand_threshold = 0
             while (x >= self.poi.info.width - expand_threshold):
                 expand_poi("+x")
@@ -379,12 +375,11 @@ class Pathfinding_Node:
                 expand_poi("-y")
                 print("expanded -y")
 
+            # get the previous data at the point in question
             index = int(x + self.poi.info.width * y)
-            #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
-            #print(index)
-
             prior = self.poi.data[index]
 
+            # adjust the point:
             if prior < 0:
                 # if the value has never been set, set it to 10
                 post = 10
@@ -401,12 +396,17 @@ class Pathfinding_Node:
                 # reset any points with value 50 to 0. 
                 post = 0
 
+            # update the data at the point
             self.poi.data[index] = post
-
+        
+        # This function checks the poin list value for a point.
         def checkPoi(x,y):
+            # adjust to the grid
             x = math.floor((x-self.poi.info.origin.position.x)/self.poi.info.resolution)
             y = math.floor((y-self.poi.info.origin.position.y)/self.poi.info.resolution)
             
+            # make sure you don;t need to expand the map
+            # threshold parameter to allow for wider maps:
             expand_threshold = 0
             while (x >= self.poi.info.width - expand_threshold):
                 expand_poi("+x")
@@ -421,17 +421,18 @@ class Pathfinding_Node:
                 expand_poi("-y")
                 print("expanded -y")
 
+            # Get the value at the point
             index = int(x + self.poi.info.width * y)
-            #rospy.loginfo("w x:"+str(x)+" y:"+str(y)+" i:"+str(index))
-            #print(index)
-
             val = self.poi.data[index]
+            
+            # figure out if it's okay, and return the value.
             okay = True
             if val >= 50:
                 okay = False
 
             return okay
-
+        
+        # TODO: pick up commenting from here
         # This method replaces the resetWaypoints() function. It searches for a point of interest to travel to or uses the traditional reset function if a point of interest is already close by.
         def reevaluate():
             print("reevaluating...")
