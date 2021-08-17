@@ -11,6 +11,8 @@ import tf2_ros as tfr
 
 import maphelper as mh
 
+from brian.msg import RobotKeyList, DecawaveMapLabeled
+
 class Camp_Merge:
 
     #--------------------------------------------------------------------------------------------------------------
