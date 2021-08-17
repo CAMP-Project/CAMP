@@ -29,7 +29,7 @@ from rospy.core import rospyinfo
 roslib.load_manifest('rospy')
 
 # Message imports for object aquisition and use.
-from geometry_msgs.msg import Vector3, Point, PointStamped
+from geometry_msgs.msg import Vector3, Point, PointStamped, PoseStamped
 from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import LaserScan
@@ -149,6 +149,7 @@ class Pathfinding_Node:
         self.mapActual = OccupancyGrid() 
         self.lidar = LaserScan()                         
         self.odom = Odometry()
+        self.robot_pose = PoseStamped()
         
         # Start the POI blacklist in the form of an occupancy grid
         self.poi = OccupancyGrid()
@@ -186,6 +187,7 @@ class Pathfinding_Node:
         self.tf_buffer = tfr.Buffer(rospy.Duration(1200.0)) #tf buffer length
         self.tf_listener = tfr.TransformListener(self.tf_buffer)
         self.transform_destination = True
+        self.transform_odom = True
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -204,6 +206,26 @@ class Pathfinding_Node:
     def updateOdom(self, data):
         self.odom = data
 
+        if self.transform_odom == True and self.mapActual.header.frame_id != "":
+            odom_pose = PoseStamped()
+            odom_pose.pose = self.odom.pose.pose
+            odom_pose.header = self.odom.header
+
+            # transform in a try block to catch exceptions
+            try:
+                target_frame = self.mapActual.header.frame_id
+                source_frame = self.odom.header.frame_id
+
+                self.tf_buffer.can_transform(target_frame, source_frame, rospy.Time(0), rospy.Duration(3.0))
+                transform = self.tf_buffer.lookup_transform(target_frame, source_frame, rospy.Time(0))
+
+                self.robot_pose = tfgm.do_transform_pose(odom_pose, transform)
+            except Exception as e:
+                print("odom input transform failed!")
+                print(e)
+
+
+
     # Backup state subscriber
     def updateBackup(self, data):
         self.backup = data.data
@@ -217,8 +239,8 @@ class Pathfinding_Node:
         def getRoboMapPosition():
             # Use Odometry to get the robot's position.
             result = Vector3()
-            result.x = self.odom.pose.pose.position.x
-            result.y = self.odom.pose.pose.position.y
+            result.x = self.robot_pose.pose.position.x
+            result.y = self.robot_pose.pose.position.y
 
             # Return.
             return result
@@ -471,8 +493,9 @@ class Pathfinding_Node:
 
             #poilist = np.where(poimap == 1)
 
-            x = self.odom.pose.pose.position.x
-            y = self.odom.pose.pose.position.y
+            self.robot_pose = PoseStamped()
+            x = self.robot_pose.pose.position.x
+            y = self.robot_pose.pose.position.y
 
             # look for areas with many 1s on the poimap. we will start in a small radius and branch further
             nearmap = poimap[meter2grid(y-0.5,'y'):meter2grid(y+0.5,'y'),meter2grid(x-0.5,'x'):meter2grid(x+0.5,'x')]
@@ -529,7 +552,7 @@ class Pathfinding_Node:
 
                 listPoi(max_x,max_y)
                 
-                path = makePath([self.odom.pose.pose.position.x,self.odom.pose.pose.position.y,max_x,max_y],freemap,[max_x,max_y])
+                path = makePath([self.robot_pose.pose.position.x,self.robot_pose.pose.position.y,max_x,max_y],freemap,[max_x,max_y])
 
                 self.waypoints = [Waypoint('none') for i in range(1,len(path)/2)]
                 print("all waypoints deleted")
@@ -751,8 +774,8 @@ class Pathfinding_Node:
             direction = entropyDirections.index(min(entropyDirections))
 
             # Establish path as a series of new waypoints.
-            x = self.odom.pose.pose.position.x
-            y = self.odom.pose.pose.position.y
+            x = self.robot_pose.pose.position.x
+            y = self.robot_pose.pose.position.y
             self.waypoints = [Waypoint('none') for i in range(0,self.waypoint_count)]
             for i in range(0,self.waypoint_count):
                 x = x + dist*math.cos(2*math.pi/self.direction_count * direction)
@@ -769,8 +792,8 @@ class Pathfinding_Node:
                 end = self.waypoints[len(self.waypoints)-1].point
             else:
                 end = Point()
-                end.x = self.odom.pose.pose.position.x
-                end.y = self.odom.pose.pose.position.y
+                end.x = self.robot_pose.pose.position.x
+                end.y = self.robot_pose.pose.position.y
 
             # number of directions
             #self.direction_count = 6
@@ -1018,8 +1041,8 @@ class Pathfinding_Node:
         # If an object is not found between the robot and it's target, and the path is valid, calculate a new waypoint.
         #TODO: when there is only one point, this breaks (index 0 is out of range?)
         if len(self.waypoints) > 0:
-            dx = self.odom.pose.pose.position.x - self.waypoints[0].point.x
-            dy = self.odom.pose.pose.position.y - self.waypoints[0].point.y
+            dx = self.robot_pose.pose.position.x - self.waypoints[0].point.x
+            dy = self.robot_pose.pose.position.y - self.waypoints[0].point.y
             diff = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
         else:
             diff = 0
