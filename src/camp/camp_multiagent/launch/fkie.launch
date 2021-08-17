@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find fkie_master_discovery)/launch/master_discovery.launch" />
+    <include file="$(find fkie_master_sync)/launch/master_sync.launch" />
+</launch>
