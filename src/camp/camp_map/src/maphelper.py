@@ -120,6 +120,7 @@ def transform_map(in_map,out_frame,tf_buffer):
     # If the transform cannot occur (an exception has been raised), catch it, and sleep.
     except (tfr.LookupException, tfr.ConnectivityException, tfr.ExtrapolationException) as e:
         print("Transform Problem!!")
+        print(out_frame)
         print(e)
         rospy.sleep(1)
         return -1
