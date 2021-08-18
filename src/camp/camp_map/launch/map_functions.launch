@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!--Launch the map merger-->
+  <include file="$(find camp_map)/launch/multimerge.launch" >
+    <arg name="local_map_name" value="map"/>
+  </include> 
+
+  <!--Launch map exporter-->
+  <include file="$(find camp_map)/launch/export.launch" >
+    <arg name="map_in" value="map"/>
+    <arg name="map_out" value="deca_map"/>
+    <arg name="output_frame" value="deca"/>
+  </include> 
+  
+</launch>
