@@ -240,7 +240,7 @@ class Calibrator_Python:
             transformToPublish = Vector3(tx, ty, theta)
             
             # Transform header and child ID info.
-            transformToBroadcast.header.stamp = rospy.Time()
+            transformToBroadcast.header.stamp = rospy.Time().now()
             transformToBroadcast.header.frame_id = "odom"
             transformToBroadcast.child_frame_id = "deca"
 
