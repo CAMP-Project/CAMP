@@ -62,10 +62,10 @@ class Camp_Map_Export:
             print("transforming map...")
             tfd_map = mh.transform_map(self.next_map,self.output_frame,self.tf_buffer)
             if tfd_map == -1:
-                print("transform failed, map not updated.")
+                rospy.loginfo("export transform failed, map not updated.")
             else:
                 self.map_publisher.publish(tfd_map)
-                print("published a map")
+                rospy.loginfo("published a decamap")
             self.read_map = False
 
             
