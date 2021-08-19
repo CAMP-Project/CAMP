@@ -91,20 +91,24 @@ class Camp_Merge:
     #--------------------------------------------------------------------------------------------------------------
     def main(self):
         merged_map = self.local_map
-        if merged_map != -1:
-            for map_key in self.deca_map:
-                new_map = self.deca_map[map_key]
-                #print("!!-------!!\n"+str(type(new_map))+"\n"+str(new_map)+"\n!!-----!!")
+        for map_key in self.deca_map:
+            new_map = self.deca_map[map_key]
+            #print("!!-------!!\n"+str(type(new_map))+"\n"+str(new_map)+"\n!!-----!!")
+            print("right before the function")
+            print(new_map.header.frame_id)
+            if new_map.header.frame_id != '':
                 tfd_map = mh.transform_map(new_map,merged_map.header.frame_id,self.tf_buffer)
-                if tfd_map != -1:
-                    merged_map = mh.combine_map(tfd_map,merged_map)
-                else:
-                    rospy.loginfo("transform failed, map not updated.")
+            else:
+                tfd_map = -1
+                print("!!! FRAME MISSING!!")
+            if tfd_map != -1:
+                merged_map = mh.combine_map(tfd_map,merged_map)
+            else:
+                rospy.loginfo("transform failed, map not updated.")
 
-            merged_map.header.stamp = rospy.Time.now()
-            self.map_publisher.publish(merged_map)
-            rospy.loginfo("transform successful, map published")
-        else rospy.loginfo("no map yet...")
+        merged_map.header.stamp = rospy.Time.now()
+        self.map_publisher.publish(merged_map)
+        rospy.loginfo("transform successful, map published")
         
 
             

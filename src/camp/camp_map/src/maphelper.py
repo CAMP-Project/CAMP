@@ -31,6 +31,9 @@ def transform_map(in_map,out_frame,tf_buffer):
         print(target_frame)
         print("source:")
         print(source_frame)
+        if source_frame == "":
+            print("in_map:")
+            print(in_map)
 
         # Can transform?
         tf_buffer.can_transform(target_frame, source_frame, rospy.Time(0), rospy.Duration(3.0))
