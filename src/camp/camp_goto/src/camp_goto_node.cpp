@@ -3,9 +3,10 @@
  * 
  * The node created by this package subscribes to the go_cmd topic and other neccesairy
  * navigation-related topics and publishes the cmd_vel topic to move the robot.
+ * Backup code removed.
  *
  * @author Tyler Pigott
- * @version 2021.7.31
+ * @version 2021.8.18
  */
 
 // ROS Default Header File
@@ -52,7 +53,6 @@ geometry_msgs::Twist vel_msg;
 //Movement Vars
 float x_vel, z_ang_vel;
 float go_x, go_y, go_distance, heading;
-float velocity_direction = 1;
 //Scan
 float angle_min, angle_max, angle_increment, scan_time, range_min, range_max;
 vector<float> ranges, intensities;
@@ -193,7 +193,7 @@ void updateLongPos(const camp_goto::Cmd::ConstPtr& msg){
 float somethingInFront() {
     float closest_front_object;
     //set the front angle to 0 for positive direction, 180 for negative direction
-    int front_angle = 90-90*velocity_direction;
+    int front_angle = 0;
     if(ranges.size() == 360){
         // Find how close the closest object is in the range of -emeg_stop_angle to emeg_stop_angle
         if (ranges.at(front_angle) != 0) closest_front_object = ranges.at(front_angle);
@@ -204,6 +204,30 @@ float somethingInFront() {
             if(ranges.at(360-front_angle-i) < closest_front_object && ranges.at(360-front_angle-i) != 0) closest_front_object = ranges.at(360-front_angle-i);
         }
         return closest_front_object;
+    } else {
+        return 0.0;
+    }
+}
+
+/**
+ * This function finds the distance to the closest object opposite the robot's direction of travel.
+ * 
+ * @returns closest_back_object the distance to the closest object
+ */
+float somethingBehind() {
+    float closest_back_object;
+    //set the front angle to 0 for positive direction, 180 for negative direction
+    int front_angle = 180;
+    if(ranges.size() == 360){
+        // Find how close the closest object is in the range of -emeg_stop_angle to emeg_stop_angle
+        if (ranges.at(front_angle) != 0) closest_back_object = ranges.at(front_angle);
+        else closest_back_object = 500;
+        for(int i = 1; i < param.emeg_stop_angle; i++) {
+            // Check both sides
+            if(ranges.at(front_angle+i) < closest_back_object && ranges.at(front_angle+i) != 0) closest_back_object = ranges.at(front_angle+i);
+            if(ranges.at(360-front_angle-i) < closest_back_object && ranges.at(360-front_angle-i) != 0) closest_back_object = ranges.at(360-front_angle-i);
+        }
+        return closest_back_object;
     } else {
         return 0.0;
     }
@@ -230,17 +254,6 @@ void pointToPoint() {
         if(head_error > PI) head_error = head_error - 2*PI;
         if(head_error < 0-PI) head_error = head_error + 2*PI;
     }
-
-    // to implement backwards movement, change angles to be between -pi/2 and pi/2, and set velocity direction to -1 for corrected angles.
-    velocity_direction = 1;
-    if(head_error > PI/2) {
-        head_error = head_error - PI;
-        velocity_direction = -1;
-    } 
-    if(head_error < 0-PI/2) {
-        head_error = head_error + PI;
-        velocity_direction = -1;
-    }
     
     // set rotational speed relative to the heading error and correct for max speeds.
     z_ang_vel = 2.0*param.speed * head_error; // 2 seems to be a good Kp in matlab sims
@@ -251,10 +264,9 @@ void pointToPoint() {
     //                          +-- Speed modifier from command
     //                          |             +-- Robot moves slightly backwards if 100% wrong direction
     //                          |             |   +-- Robot moves 100% forwards if in the exact right direction
-    //                          |             |   |      +-- Speed is related to the error in the heading
-    //       +-- Max speed      |             |   |      |                    +-- velocity_direction is either positive or negative.
-    //       V                  V             V   V      V                    V
-    x_vel = BURGER_MAX_LIN_VEL*param.speed*(-0.1+1.1*(1-abs(head_error)/PI))*velocity_direction; 
+    //       +-- Max speed      |             |   |      +-- Speed is related to the error in the heading
+    //       V                  V             V   V      V                    
+    x_vel = BURGER_MAX_LIN_VEL*param.speed*(-0.1+1.1*(1-abs(head_error)/PI));
     if(go_distance < param.dest_stop) {
         //stop if at a final point
         // distance set in command message
@@ -308,40 +320,23 @@ int main(int argc, char **argv){
     float reset = 0.0;
     while(ros::ok()) {
         //find out how far the robot can travel in it's current direction:
-        reset = somethingInFront();
+        front_distance = somethingInFront();
+	back_distance = somethingBehind();
 	//if the distance is further than the emergency stop value plus a little bit, return to forward operation
-        if (reset > param.emg_stop + 0.3) backup = false;
+        if (front_distance > param.emg_stop + 0.3) backup = false;
+	//if the robot is halfway between the closest front object and the closest back object, stop backing up. 
+   	elif (front_distance >= back_distance) backup = false;
 	//if the distance is closer than the emergency stop value, back up until the object isn't as close.
-        if (reset < param.emg_stop) backup = true;
+        elif (front_distance < param.emg_stop) backup = true;
         //if moving forward, navigate as usual.
         if (backup == false) {
             pointToPoint();
-        // Otherwise,
+        // Otherwise, backup.
         } else {
-            //reverse direction temporarily for the somethignInFront test
-            velocity_direction = -velocity_direction;
-            //look in the new direction for obstacles
-            //if the path is clear,
-            if (somethingInFront() > param.emg_stop){
-                // fix velocity direction
-                velocity_direction = -velocity_direction;
-                //navigate as usual
-                pointToPoint();
-                // throw out forward direction and move backward in a straight line
-                x_vel = -velocity_direction*BURGER_MAX_LIN_VEL*param.speed;
-                //z_ang_vel = 0;
-            //if the path is not clear
-            } else {
-                // fix velocity direction
-                velocity_direction = -velocity_direction;
-                //return to normal navigation
-                pointToPoint();
-                // don't move forward or back, to prevent infinite stuck periods
-                x_vel = 0;
-            }
+            x_vel = -BURGER_MAX_LIN_VEL*param.speed;
         }
         
-	//stop if told to by the imcoming command.
+	//stop if told to by the incoming command.
         if(cmd.stop == true){
             x_vel = 0; 
             z_ang_vel = 0;
