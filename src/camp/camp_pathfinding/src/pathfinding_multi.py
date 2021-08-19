@@ -116,6 +116,10 @@ class Pathfinding_Multi:
         self.backupNew = False
 
         #---------------------------------------------------------------------------------
+        # NEW CODE FOR HANDLING THE NEW COST FUNCTION.
+        self.penaltyMap = OccupancyGrid()
+
+        #---------------------------------------------------------------------------------
         # NEW INIT CODE FOR TF.
         
         # Instantiate a new tf buffer and a new tf listener.
@@ -127,6 +131,7 @@ class Pathfinding_Multi:
 
         # Create a list object to hold on to the different hosts on the network.
         self.hostList = []
+        self.myName = ""
 
         # Add map variables in which to store incoming data.
         self.odomMap = {} # Odom-based map storage.
@@ -153,6 +158,11 @@ class Pathfinding_Multi:
     # from the generated map.
     def updateMap(self, data):
         self.mapActual = data
+        self.penaltyMap.info.height = self.mapActual.info.height
+        self.penaltyMap.info.width = self.mapActual.info.width
+        self.penaltyMap.info.resolution = self.mapActual.info.resolution
+        self.penaltyMap.info.origin.position.x = self.mapActual.info.origin.position.x
+        self.penaltyMap.info.origin.position.y = self.mapActual.info.origin.position.y
 
 
     # This method will update lidar data when new data will be available. This method grabs every parameter 
@@ -173,7 +183,11 @@ class Pathfinding_Multi:
 
     # Callback to update the list of hosts on the current network.
     def update_list(self, data):
+        # Grab the list of hosts provided by the MMA.
         globalKeys = data.robotKeys
+
+        # Update my name with the first entry in the host list.
+        self.myName = globalKeys[0]
         
         # First, check for keys contained in the local host list that are NOT in the current global list.
         for key in self.hostList:
@@ -655,24 +669,36 @@ class Pathfinding_Multi:
                 return self.mapActual.data[x + (self.mapActual.info.width * y)]
 
         # Method to calculate the entropy at a given map index.
+        # ----------------------------------------------------------------------------------------------
+        # NOTE: *** UPDATE ***
+        # ---------------------
+        # This method now takes into account the penalty values in the penalty map and returns
+        # that value.
+        #-----------------------------------------------------------------------------------------------
         def entropy(x, y):
             # First grab probability. Divide by 102 such that 100 becomes approximately 0.99.
             p = self.mapActual.data[x + (self.mapActual.info.width * y)]
-            #print(p)
             
+            # Then, grab the penalty value at the same index.
+            d = self.penaltyMap.data[x + (self.penaltyMap.info.width * y)]
+
             # If the value of the probability at the given index is negative, replace it with 0.5.
             # Note: this does not replace the value of the probability value in the OccupancyMap.
             if p < 0:
                 p = 50
-            #print(p)
+
             p = p / 100.0
-            print(p)
+            d = d / 100.0
+
             # Quick calculation to ensure that the probability is between 0.01 and 0.99.
             p = (p * 0.98) + 0.01
-            #print(p)
-            # Return the entropy.
-            #print((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
-            return ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
+   
+            # Calculate the entropy.
+            e = ((-p * math.log(p, 2)) - ((1 - p) * math.log(1 - p, 2)))
+
+            # Return the new reward function.
+            a = 0.5 
+            return (a * e) + ((1 - a) * d)
 
 
         # This method checks for obstacles between the robot and waypoint 1. Taken from camp_goto_node.
@@ -702,6 +728,48 @@ class Pathfinding_Multi:
                     return False
             else:
                 return True
+
+        
+        # Method for refreshing the penalty map given the positions of the other robots in the system.
+        def updatePenaltyMap():
+
+            # Only perform this operation if the host list contains entries other than the current robot, which
+            # should be the first entry in the list.
+            if len(self.hostList) > 1:
+
+                # First, compute the transformations of the incoming decawave data from other robots to the current
+                # robot's odometry frame.
+                transformedPositions = list()
+
+                # Then, iterate through the entries in the decawave position map.
+                for key in self.decaPos:
+                    # For every key that is not the robot's key, transform deca data and append that pose to the 
+                    # transformedPositions above.
+                    if key is not self.myName:
+                        transformedPositions.append(transformActions(self.decaPos[key], 'odom', 'deca'))
+
+                # Then, for every row and column in the penalty map, update the current penalty at that coordinate
+                # (r, c). 
+                penaltyValues = list()
+                for r in range(0, self.penaltyMap.info.height):
+                    for c in range(0, self.penaltyMap.info.width):
+                        for robot in transformedPositions:
+                            # Calculate the penalty value at the current row and column given the positions of other robots.
+                            value = 1.0 / math.sqrt(pow(r - robot.pose.position.y, 2) + pow(c - robot.pose.position.x, 2))
+
+                            # Add that value to the penalty values at that row and column for each robot.
+                            penaltyValues.append(value)
+
+                        # Update the penalty map at the current row and index as an int value.
+                        self.penaltyMap.data[c + (self.penaltyMap.info.width * r)] = int(100 * sum(penaltyValues))
+
+                        # Clear the penalty values and recalculate.
+                        penaltyValues.clear()
+            
+            else:
+                for r in range(0, self.penaltyMap.info.height):
+                    for c in range(0, self.penaltyMap.info.width):
+                        self.penaltyMap.data[c + (self.penaltyMap.info.width * r)] = 0
 
 
         # Method for computing the transform of a pose in the source frame (the pose's original frame), to a pose in
