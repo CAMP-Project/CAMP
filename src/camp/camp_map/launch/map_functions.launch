@@ -3,7 +3,7 @@
 <launch>
   <!--Launch the map merger-->
   <include file="$(find camp_map)/launch/multimerge.launch" >
-    <arg name="local_map_name" value="map"/>
+    <arg name="local_map_name" value="deca_map"/>
   </include> 
 
   <!--Launch map exporter-->

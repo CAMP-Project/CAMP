@@ -118,6 +118,8 @@ class dwm1001_localizer:
 
                 except IndexError:
                     rospy.loginfo("Found index error in the network array!DO SOMETHING!")
+                except ValueError:
+                    rospy.loginfo("this is the stupid error from earlier maybe it's better now? idek, i wquit i just want it to work again. please do the right thing and don't ever make this message appear.")
 
 
 
