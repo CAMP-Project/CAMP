@@ -317,23 +317,34 @@ int main(int argc, char **argv){
 
     std_msgs::Bool backupMsg;
     bool backup = false;
-    float reset = 0.0;
+    float front_distance = 0.0, back_distance = 0.0;
+    float speed_value = 0.0;
     while(ros::ok()) {
         //find out how far the robot can travel in it's current direction:
         front_distance = somethingInFront();
-	back_distance = somethingBehind();
-	//if the distance is further than the emergency stop value plus a little bit, return to forward operation
+        back_distance = somethingBehind();
+        //if the distance is further than the emergency stop value plus a little bit, return to forward operation
         if (front_distance > param.emg_stop + 0.3) backup = false;
-	//if the robot is halfway between the closest front object and the closest back object, stop backing up. 
-   	elif (front_distance >= back_distance) backup = false;
-	//if the distance is closer than the emergency stop value, back up until the object isn't as close.
-        elif (front_distance < param.emg_stop) backup = true;
+        //if the robot is halfway between the closest front object and the closest back object, stop backing up. 
+        else if (front_distance >= back_distance) backup = false;
+        //if the distance is closer than the emergency stop value, back up until the object isn't as close.
+        else if (front_distance < param.emg_stop) backup = true;
         //if moving forward, navigate as usual.
         if (backup == false) {
             pointToPoint();
         // Otherwise, backup.
         } else {
-            x_vel = -BURGER_MAX_LIN_VEL*param.speed;
+            if (x_vel > 0) {
+                x_vel = 0;
+                speed_value = 0;
+            }
+            else if (x_vel > -BURGER_MAX_LIN_VEL*param.speed*0.5) {
+                speed_value = speed_value + 0.1;
+                x_vel = -BURGER_MAX_LIN_VEL*param.speed*speed_value*0.5;
+            }
+            else {
+                x_vel = -BURGER_MAX_LIN_VEL*param.speed*0.5;
+            }
         }
         
 	//stop if told to by the incoming command.
