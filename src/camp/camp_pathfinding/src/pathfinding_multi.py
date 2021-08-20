@@ -34,9 +34,7 @@ from brian.msg import RobotKeyList
 #------------------------------------------------------------------------------------------------
 # TF2 Imports.
 import tf2_geometry_msgs
-import tf2_msgs
 import tf2_ros
-from tf import transformations
 #------------------------------------------------------------------------------------------------
 
 
@@ -76,6 +74,8 @@ class Pathfinding_Multi:
 
         # This publishes the position of the robot.
         self.robot_publisher = rospy.Publisher('robot_publisher', PointStamped, queue_size = 10)
+
+        # This publishes the 
         
 
         # Create a waypoint hashmap. Stores coordinates of waypoints. This will start as an 
@@ -115,9 +115,18 @@ class Pathfinding_Multi:
         self.backupOld = False
         self.backupNew = False
 
+
         #---------------------------------------------------------------------------------
         # NEW CODE FOR HANDLING THE NEW COST FUNCTION.
         self.penaltyMap = OccupancyGrid()
+        self.penaltyMap.info.height = 384
+        self.penaltyMap.info.width = 384
+        self.penaltyMap.info.resolution = 0.05
+        self.penaltyMap.info.origin.position.x = -10
+        self.penaltyMap.info.origin.position.y = -10
+        
+        # Setup a publisher for the penalty map.
+        self.penalty_publisher = rospy.Publisher('/camp_penalty', OccupancyGrid, queue_size=10)
 
         #---------------------------------------------------------------------------------
         # NEW INIT CODE FOR TF.
@@ -128,6 +137,8 @@ class Pathfinding_Multi:
 
         #---------------------------------------------------------------------------------
         # NEW INIT CODE FOR MULTIMASTER.
+        # NOTE: Refrain from deleting any of these parameters until you are sure that
+        # they are not needed for any pathfinding operations!!!
 
         # Create a list object to hold on to the different hosts on the network.
         self.hostList = []
@@ -147,6 +158,10 @@ class Pathfinding_Multi:
 
         # Subscribe to the list of other roscores on the current network.
         rospy.Subscriber('/host_list', RobotKeyList, self.update_list)
+
+        # Subscribe to the merged map for all robots on the network.
+        self.merged_map = None
+        rospy.Subscriber('/merged_map', OccupancyGrid, self.merged_map_update)
         rospy.sleep(1)
 
 
@@ -158,11 +173,18 @@ class Pathfinding_Multi:
     # from the generated map.
     def updateMap(self, data):
         self.mapActual = data
+        
+        # Alter the penalty map geometry to match that of the current occupancy grid.
         self.penaltyMap.info.height = self.mapActual.info.height
         self.penaltyMap.info.width = self.mapActual.info.width
         self.penaltyMap.info.resolution = self.mapActual.info.resolution
         self.penaltyMap.info.origin.position.x = self.mapActual.info.origin.position.x
         self.penaltyMap.info.origin.position.y = self.mapActual.info.origin.position.y
+
+        # If the penalty map does not have any data in its data parameter, give it some.
+        if len(self.penaltyMap.data) == 0:
+            new_penalty_data = [0 for i in range(0, self.mapActual.info.height * self.mapActual.info.width)]
+            self.penaltyMap.data = new_penalty_data
 
 
     # This method will update lidar data when new data will be available. This method grabs every parameter 
@@ -253,7 +275,12 @@ class Pathfinding_Multi:
     # sure is what we want.
     # ***************************************************************************************************************
     def decaMapUpdate(self, data):
-        self.decaMap[data.name] = data.pose
+        self.decaMap[data.name] = data.map
+
+
+    # Callback method for updating the merged deca map on the network.
+    def merged_map_update(self, data):
+        self.merged_map = data
 
 
     #--------------------------------------------------------------------------------------------------------------
@@ -526,6 +553,9 @@ class Pathfinding_Multi:
             limitMax = 15
             outerEdge = 30
 
+            # First, update the penalty map with the new robot position information.
+            updatePenaltyMap()
+
             # Calculate entropy squares in 8 different directions around the robot. 
             entropyDirections[0] = grabEntropySquare(point_x - limitMax, point_x - limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax - outerEdge, point_x -  limitMax, point_y - limitMax - outerEdge, point_y - limitMax)/9
             entropyDirections[1] = grabEntropySquare(point_x - limitMin, point_x + limitMin, point_y -  limitMax, point_y - limitMin) + 0.1*grabEntropySquare(point_x - limitMax, point_x + limitMax, point_y - limitMax - outerEdge, point_y - limitMax)/9
@@ -746,30 +776,58 @@ class Pathfinding_Multi:
                     # For every key that is not the robot's key, transform deca data and append that pose to the 
                     # transformedPositions above.
                     if key is not self.myName:
-                        transformedPositions.append(transformActions(self.decaPos[key], 'odom', 'deca'))
+                        print(key)
+                        print(self.decaPos)
+                        current_pose = self.decaPos[key].pose
+                        new_pose = transformActions(self.decaPos[key], 'odom', 'deca', '')
+                        rospy.loginfo("---------------------------------------------------------------------------")
+                        rospy.loginfo(key + " Deca Position  : (" + str(current_pose.position.x) + ", " + str(current_pose.position.y) + ")")
+                        rospy.loginfo(key + " Trsfm Position : (" + str(new_pose.pose.position.x) + ", " + str(new_pose.pose.position.y) + ")")
+                        rospy.loginfo(self.myName + " Odom Comparison: (" + str(self.odom.pose.pose.position.x) + ", " + str(self.odom.pose.pose.position.y) + ")")
+                        rospy.loginfo("---------------------------------------------------------------------------")
+                        transformedPositions.append(new_pose)
 
                 # Then, for every row and column in the penalty map, update the current penalty at that coordinate
                 # (r, c). 
                 penaltyValues = list()
-                for r in range(0, self.penaltyMap.info.height):
-                    for c in range(0, self.penaltyMap.info.width):
+
+                robot_position = getMatrixPosition()
+
+                #for r in range(1, self.penaltyMap.info.height):
+                for r in range(robot_position[1] - 50, robot_position[1] + 51):
+                    #for c in range(1, self.penaltyMap.info.width):
+                    for c in range(robot_position[0] - 50, robot_position[1] + 51):
                         for robot in transformedPositions:
+
+                            # First, convert the x and y values into index values. 
+                            y = (robot.pose.position.y - self.penaltyMap.info.origin.position.y) / 0.05
+                            x = (robot.pose.position.x - self.penaltyMap.info.origin.position.x) / 0.05
                             # Calculate the penalty value at the current row and column given the positions of other robots.
-                            value = 1.0 / math.sqrt(pow(r - robot.pose.position.y, 2) + pow(c - robot.pose.position.x, 2))
+                            value = 1.0 / math.sqrt(pow(r - y, 2) + pow(c - x, 2))
 
                             # Add that value to the penalty values at that row and column for each robot.
                             penaltyValues.append(value)
 
+                        # print("Current index in list: " + str(c + (self.penaltyMap.info.width * r)))
+                        # print("Max index in list: " + str(len(self.penaltyMap.data)))
+
                         # Update the penalty map at the current row and index as an int value.
-                        self.penaltyMap.data[c + (self.penaltyMap.info.width * r)] = int(100 * sum(penaltyValues))
+                        self.penaltyMap.data[c + (self.penaltyMap.info.width * r)] = int(-100 * sum(penaltyValues))
 
                         # Clear the penalty values and recalculate.
-                        penaltyValues.clear()
+                        penaltyValues = []
             
+            # If there are no other hosts on the network, reinitialize the penalty map.
             else:
-                for r in range(0, self.penaltyMap.info.height):
-                    for c in range(0, self.penaltyMap.info.width):
-                        self.penaltyMap.data[c + (self.penaltyMap.info.width * r)] = 0
+                rospy.loginfo("There are no other hosts besides this host.")
+                rospy.loginfo("Reinitializing penalty map...")
+                new_penalty_data = [0 for i in range(0, self.penaltyMap.info.height * self.penaltyMap.info.width)]
+                self.penaltyMap.data = new_penalty_data
+                if sum(self.penaltyMap.data) == 0:
+                    rospy.loginfo("Reinitialization successful!")
+
+            # Publish the new penalty map.
+            self.penalty_publisher.publish(self.penaltyMap)
 
 
         # Method for computing the transform of a pose in the source frame (the pose's original frame), to a pose in
