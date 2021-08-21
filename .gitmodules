@@ -1,3 +1,4 @@
 [submodule "src/multimaster_fkie"]
 	path = src/multimaster_fkie
 	url = https://github.com/CAMP-Project/multimaster_fkie.git
+	branch = camp-devel
