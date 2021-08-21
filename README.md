@@ -1,5 +1,10 @@
 # Coordinated Autonomous Mapping & Pathfinding
 
+## What Is This?
+This project was put together by Sean Carda, Manpreet Singh, and Tyler Pigott with help from Dr. Michael McCourt and a foundation from the FireForce team as a part of the Electrical Engineering Program at the Univerity of Washington Tacoma and continued into the summer after graduation as a research project. Our goal was to get multiple autonomous Turtlebot3 robots to work together to map a space, and we got pretty darn close.
+
+The final result of our project wasseveral useful bits of code that could combine with more time and development to reach the project goal. Packages include one that accepts navigation commands to navigate to points, several options for generating points, a Kalman filter to help smooth time-of-flight sensor data, the Multimaster Arbitrator to facilitate inter-robot communication, and some packages for transforming maps. A more detailed account of project contents is below.
+
 ## Project Depenendencies
 * [Multimaster FKIE](http://wiki.ros.org/multimaster_fkie)
 * [Python2 version of OpenCV](https://github.com/opencv/opencv)
@@ -22,3 +27,13 @@ git submodule update --init
 
 catkin_make
 ```
+
+## Project Contents
+Here are our interesting or new contributions to the project. There are more packages in the srcfolder, but some of them come with the turtlebot or where inherited from previous groups.
+### [Brian](https://github.com/CAMP-Project/CAMP/tree/master/src/brian) - The Multimaster Arbitrator
+### [Camp](https://github.com/CAMP-Project/CAMP/tree/master/src/camp) - Goto, Pathfinding, and Maps.
+### [Coop Test](https://github.com/CAMP-Project/CAMP/tree/master/src/coop_test) - Testing Cooperation
+### [Kalman Filter](https://github.com/CAMP-Project/CAMP/tree/master/src/kalman_filter) - Smoothing Time-of-Flight Data
+### [Lidar Listener](https://github.com/CAMP-Project/CAMP/tree/master/src/lidar_listener) - Our First Sensor Test
+### [Roomba Navigation](https://github.com/CAMP-Project/CAMP/tree/master/src/roomba_navigation) - Minimum Deliverable Product
+### [TF Test Environment](https://github.com/CAMP-Project/CAMP/tree/master/src/tf_test_environment) - Figuring Out Transforms
